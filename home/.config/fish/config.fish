@@ -13,7 +13,12 @@ if test -d "/usr/local/opt/sqlite/bin"
 end
 
 # Open vscode editor in a new window and wait for the file to be saved
-set -U EDITOR code -nw
+if test -e "/usr/local/bin/code"
+    set -U EDITOR code -nw
+else
+    set -U EDITOR nano
+end
+
 set -Ux VAGRANT_DEFAULT_PROVIDER vmware_fusion
 
 set -Ux LANG en_US.UTF-8
