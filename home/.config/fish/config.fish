@@ -1,10 +1,16 @@
 # Generic binaries
-set -gx fish_user_paths /Users/$USER/bin/ $fish_user_paths
+set -gx fish_user_paths $HOME/bin/ $fish_user_paths
 # Default go binary path
-set -gx fish_user_paths /Users/$USER/go/bin/ $fish_user_paths
+if test -d "$HOME/go/bin/"
+    set -gx fish_user_paths $HOME/go/bin/ $fish_user_paths
+end
 # Rustup
-set -gx fish_user_paths /Users/$USER/.cargo/bin/ $fish_user_paths
-set -gx fish_user_paths "/usr/local/opt/sqlite/bin" $fish_user_paths
+if test -d "$HOME/.cargo/bin/"
+    set -gx fish_user_paths $HOME/.cargo/bin/ $fish_user_paths
+end
+if test -d "/usr/local/opt/sqlite/bin"
+    set -gx fish_user_paths "/usr/local/opt/sqlite/bin" $fish_user_paths
+end
 
 # Open vscode editor in a new window and wait for the file to be saved
 set -U EDITOR code -nw
