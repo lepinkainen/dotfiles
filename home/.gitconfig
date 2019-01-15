@@ -1,5 +1,25 @@
-# This is Git's per-user configuration file.
 [user]
-# Please adapt and uncomment the following lines:
-	name = Riku Lindblad
-	email = riku.lindblad@gmail.com
+        email = riku.lindblad@gmail.com
+        name = Riku Lindblad
+[color]
+        diff = auto
+        status = auto
+        branch = auto
+[alias]
+    s = status --short --branch
+
+    up = !git pull --rebase --prune $@ && git submodule update --init --recursive
+
+    pom = push origin master
+    pum = pull --rebase origin master
+
+    # Like "git show myfile", but uses the last commit that changed "myfile".
+    showlast = log -n 1 -p
+
+    outgoing = diff origin/master...master
+    incoming = !git fetch && git log --stat ..origin/master
+    lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+[mergetool.ediff]
+    cmd = emacs --eval \"(progn  (defun ediff-write-merge-buffer ()    (let ((file ediff-merge-store-file))      (set-buffer ediff-buffer-C)      (write-region (point-min) (point-max) file)      (message \\\"Merge buffer saved in: %s\\\" file)      (set-buffer-modified-p nil)      (sit-for 1)))  (setq ediff-quit-hook 'kill-emacs        ediff-quit-merge-hook 'ediff-write-merge-buffer)  (ediff-merge-files-with-ancestor \\\"$LOCAL\\\" \\\"$REMOTE\\\"                                   \\\"$BASE\\\" nil \\\"$MERGED\\\"))\"
+[push]
+    default = matching
