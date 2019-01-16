@@ -1,6 +1,10 @@
+# TODO: https://stackoverflow.com/a/43654115/6469
+# Conditional include for user.email
+
 [user]
         email = riku.lindblad@gmail.com
         name = Riku Lindblad
+        signingkey = C445E2DF
 [color]
         diff = auto
         status = auto
