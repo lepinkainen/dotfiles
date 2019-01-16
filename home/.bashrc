@@ -13,9 +13,11 @@ export DISPLAY=
 
 # emacsd setup
 # Run emacs-server if needed
-export ALTERNATE_EDITOR=""
-export EDITOR="emacsclient -nw -c"$@""
-alias emacs="$EDITOR"
+#export ALTERNATE_EDITOR=""
+#export EDITOR="emacsclient -nw -c"$@""
+#alias emacs="$EDITOR"
+
+export EDITOR=nano
 
 export TERM="screen-256color"
 
