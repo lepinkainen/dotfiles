@@ -61,3 +61,5 @@ function myip -d "Get public IP"
 # Homeshick integration and completions
 . "$HOME/.homesick/repos/homeshick/homeshick.fish"
 source "$HOME/.homesick/repos/homeshick/completions/homeshick.fish"
+# Check if a homeshick refresh is needed
+homeshick --quiet refresh
