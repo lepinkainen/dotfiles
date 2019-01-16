@@ -33,8 +33,6 @@ export HISTTIMEFORMAT="%Y-%m-%d %H:%M:%S  "
 export HISTIGNORE="cd:cd ..:..*: *"
 
 export PYTHONSTARTUP="$HOME/.pystartup"
-# allow easy_install -d ~/bin/ <packagename> to work
-export PYTHONPATH=$PYTHONPATH:$HOME/site-packages/
 # pip install --user
 export PYTHONPATH=$PYTHONPATH:$HOME/.local/bin/
 
@@ -147,11 +145,6 @@ if [ -f /etc/bash_completion ]; then
     . /etc/bash_completion
 fi
 
-# gist user installs
-if [ -d $HOME/.gem/ruby/1.9.1/bin ] ; then
-    PATH=$HOME/.gem/ruby/1.9.1/bin:"${PATH}"
-fi
-
 # local binaries
 if [ -d $HOME/bin ] ; then
     PATH=$HOME/bin:"${PATH}"
@@ -166,10 +159,6 @@ fi
 
 # xterm-256color breaks irssi scrolling completely under tmux
 alias irssi="TERM=screen irssi"
-
-# .env support
-# https://github.com/kennethreitz/autoenv
-source ~/dotconf/activate.sh
 
 # Thanks to https://gist.github.com/634750
 
@@ -319,21 +308,6 @@ function prompt_func() {
 }
 
 PROMPT_COMMAND=prompt_func
-
-# add export variables for local perl installs when needed
-# http://search.cpan.org/~miyagawa/App-cpanminus-1.4008/lib/App/cpanminus.pm
-#
-# install:
-# curl -L http://cpanmin.us | perl - App::cpanminus
-# install packages:
-# curl -L http://cpanmin.us | perl - Net::Twitter
-
-if [ -d $HOME/perl5 ] ; then
-eval `perl -I ~/perl5/lib/perl5 -Mlocal::lib`
-fi
-
-# added by travis gem
-[ -f /home/users/shrike/.travis/travis.sh ] && source /home/users/shrike/.travis/travis.sh
 
 source "$HOME/.homesick/repos/homeshick/homeshick.sh"
 source "$HOME/.homesick/repos/homeshick/completions/homeshick-completion.bash"
