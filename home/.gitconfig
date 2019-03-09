@@ -5,6 +5,11 @@
         email = riku.lindblad@gmail.com
         name = Riku Lindblad
         signingkey = C445E2DF
+
+# Include local gitconfig
+[includeIf "gitdir:~/projects/"]
+    path = ~/projects/.gitconfig
+
 [color]
         diff = auto
         status = auto
