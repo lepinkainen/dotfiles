@@ -1,33 +1,33 @@
-function fish_prompt --description 'Write out the prompt'
-	set -l last_status $status
+function fish_prompt
+	# Store the exit code of the last command
+	set -g sf_exit_code $status
+	set -g SPACEFISH_VERSION 2.4.0
 
-    # User
-    set_color $fish_color_user
-    echo -n (whoami)
-    set_color normal
+	# ------------------------------------------------------------------------------
+	# Configuration
+	# ------------------------------------------------------------------------------
 
-    echo -n '@'
+	__sf_util_set_default SPACEFISH_PROMPT_ADD_NEWLINE true
+	__sf_util_set_default SPACEFISH_PROMPT_FIRST_PREFIX_SHOW false
+	__sf_util_set_default SPACEFISH_PROMPT_PREFIXES_SHOW true
+	__sf_util_set_default SPACEFISH_PROMPT_SUFFIXES_SHOW true
+	__sf_util_set_default SPACEFISH_PROMPT_DEFAULT_PREFIX "via "
+	__sf_util_set_default SPACEFISH_PROMPT_DEFAULT_SUFFIX " "
+	__sf_util_set_default SPACEFISH_PROMPT_ORDER time user dir host git package node ruby golang php rust haskell julia docker aws venv conda pyenv dotnet kubecontext exec_time line_sep battery vi_mode jobs exit_code char
 
-    # Host
-    set_color $fish_color_host
-    echo -n (prompt_hostname)
-    set_color normal
+	# ------------------------------------------------------------------------------
+	# Sections
+	# ------------------------------------------------------------------------------
 
-    echo -n ':'
+	# Keep track of whether the prompt has already been opened
+	set -g sf_prompt_opened $SPACEFISH_PROMPT_FIRST_PREFIX_SHOW
 
-    # PWD
-    set_color $fish_color_cwd
-    echo -n (prompt_pwd)
-    set_color normal
+	if test "$SPACEFISH_PROMPT_ADD_NEWLINE" = "true"
+		echo
+	end
 
-    __terlar_git_prompt
-    __fish_hg_prompt
-    echo
-
-    if not test $last_status -eq 0
-        set_color $fish_color_error
-    end
-
-    echo -n '➤ '
-    set_color normal
+	for i in $SPACEFISH_PROMPT_ORDER
+		eval __sf_section_$i
+	end
+	set_color normal
 end
