@@ -8,6 +8,7 @@ end
 if test -d "$HOME/.cargo/bin/"
     set -gx fish_user_paths $HOME/.cargo/bin/ $fish_user_paths
 end
+# Sqlite
 if test -d "/usr/local/opt/sqlite/bin"
     set -gx fish_user_paths "/usr/local/opt/sqlite/bin" $fish_user_paths
 end
@@ -53,10 +54,6 @@ end
 
 # iTerm 2 integration
 test -e {$HOME}/.iterm2_shell_integration.fish ; and source {$HOME}/.iterm2_shell_integration.fish
-
-# get ip via opendns resolver
-function myip -d "Get public IP"
-    dig +short myip.opendns.com @resolver1.opendns.com; end
 
 # Homeshick integration and completions
 . "$HOME/.homesick/repos/homeshick/homeshick.fish"
