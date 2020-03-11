@@ -60,3 +60,7 @@ test -e {$HOME}/.iterm2_shell_integration.fish ; and source {$HOME}/.iterm2_shel
 source "$HOME/.homesick/repos/homeshick/completions/homeshick.fish"
 # Check if a homeshick refresh is needed
 homeshick --quiet refresh
+
+# Starship
+starship init fish | source
+
