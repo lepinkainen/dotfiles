@@ -62,5 +62,7 @@ source "$HOME/.homesick/repos/homeshick/completions/homeshick.fish"
 homeshick --quiet refresh
 
 # Starship
-starship init fish | source
+if type -q starship
+  starship init fish | source
+end
 
