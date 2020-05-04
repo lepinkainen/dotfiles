@@ -61,6 +61,10 @@ source "$HOME/.homesick/repos/homeshick/completions/homeshick.fish"
 # Check if a homeshick refresh is needed
 homeshick --quiet refresh
 
+if type -q exa
+  alias ls exa
+end
+
 # Starship
 if type -q starship
   starship init fish | source
