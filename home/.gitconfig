@@ -44,3 +44,5 @@
 	smudge = git-lfs smudge -- %f
 [column]
 	ui = auto
+[core]
+	pager = diff-so-fancy | less --tabs=4 -RFX
