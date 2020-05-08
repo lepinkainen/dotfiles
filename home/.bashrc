@@ -316,3 +316,8 @@ source "$HOME/.homesick/repos/homeshick/completions/homeshick-completion.bash"
 homeshick --quiet refresh
 eval "$(starship init bash)"
 
+if [ -z "$TMUX" ] && [ ${UID} != 0 ]
+then
+    tmux new-session -A -s main
+fi
+
