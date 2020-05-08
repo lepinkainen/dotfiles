@@ -13,6 +13,8 @@ if test -d "/usr/local/opt/sqlite/bin"
     set -gx fish_user_paths "/usr/local/opt/sqlite/bin" $fish_user_paths
 end
 
+set -g fish_user_paths "/usr/local/opt/node@12/bin" $fish_user_paths
+
 # Open vscode editor in a new window and wait for the file to be saved
 if test -e "/usr/local/bin/code"
     set -U EDITOR code -nw
@@ -36,6 +38,7 @@ end
 
 # Run for login shells
 if status --is-login
+    uptime
 end
 
 # Automatically install fisher
@@ -61,13 +64,27 @@ source "$HOME/.homesick/repos/homeshick/completions/homeshick.fish"
 # Check if a homeshick refresh is needed
 homeshick --quiet refresh
 
+### Replace builtins with external software if available
+
+# Exa is an ls replacement
 if type -q exa
   alias ls exa
 end
 
-# Starship
+# Bat is a fancier cat
+if type -q bat
+  alias cat bat
+end
+
+# Swap git pager depending on what's installed
+if type -q diff-so-fancy
+  git config --global core.pager "diff-so-fancy | less --tabs=4 -RFX"
+else
+  git config --global core.pager "less"
+end
+
+# Use starship prompt if installed
 if type -q starship
   starship init fish | source
 end
 
-set -g fish_user_paths "/usr/local/opt/node@12/bin" $fish_user_paths
