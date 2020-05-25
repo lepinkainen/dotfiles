@@ -1,13 +1,18 @@
 # Generic binaries
-set -gx fish_user_paths $HOME/bin/ $fish_user_paths
+if test -d "$HOME/bin/"
+    set -gx fish_user_paths $HOME/bin/ $fish_user_paths
+end
+
 # Default go binary path
 if test -d "$HOME/go/bin/"
     set -gx fish_user_paths $HOME/go/bin/ $fish_user_paths
 end
+
 # Rustup
 if test -d "$HOME/.cargo/bin/"
     set -gx fish_user_paths $HOME/.cargo/bin/ $fish_user_paths
 end
+
 # Sqlite
 if test -d "/usr/local/opt/sqlite/bin"
     set -gx fish_user_paths "/usr/local/opt/sqlite/bin" $fish_user_paths
