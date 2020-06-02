@@ -81,6 +81,11 @@ if type -q bat
   alias cat bat
 end
 
+# Bat is named batcat on ubuntu/debian, because of reasons
+if type -q batcat
+  alias cat batcat
+end
+
 # Swap git pager depending on what's installed
 if type -q diff-so-fancy
   git config --global core.pager "diff-so-fancy | less --tabs=4 -RFX"
