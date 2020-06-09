@@ -13,6 +13,11 @@ if test -d "$HOME/.cargo/bin/"
     set -gx fish_user_paths $HOME/.cargo/bin/ $fish_user_paths
 end
 
+# Doom-emacs
+if test -d "$HOME/.emacs.d/bin/"
+    set -gx fish_user_paths $HOME/.emacs.d/bin/ $fish_user_paths
+end
+
 # Sqlite
 if test -d "/usr/local/opt/sqlite/bin"
     set -gx fish_user_paths "/usr/local/opt/sqlite/bin" $fish_user_paths
