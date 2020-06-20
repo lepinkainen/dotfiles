@@ -23,7 +23,9 @@ if test -d "/usr/local/opt/sqlite/bin"
     set -gx fish_user_paths "/usr/local/opt/sqlite/bin" $fish_user_paths
 end
 
-set -g fish_user_paths "/usr/local/opt/node@12/bin" $fish_user_paths
+if text -d "/usr/local/opt/node@12/bin"
+    set -gx fish_user_paths "/usr/local/opt/node@12/bin" $fish_user_paths
+end
 
 # Open vscode editor in a new window and wait for the file to be saved
 if test -e "/usr/local/bin/code"
