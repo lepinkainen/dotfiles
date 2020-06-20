@@ -23,7 +23,7 @@ if test -d "/usr/local/opt/sqlite/bin"
     set -gx fish_user_paths "/usr/local/opt/sqlite/bin" $fish_user_paths
 end
 
-if text -d "/usr/local/opt/node@12/bin"
+if test -d "/usr/local/opt/node@12/bin"
     set -gx fish_user_paths "/usr/local/opt/node@12/bin" $fish_user_paths
 end
 
