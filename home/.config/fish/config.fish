@@ -3,6 +3,11 @@ if test -d "$HOME/bin/"
     set -gx fish_user_paths $HOME/bin/ $fish_user_paths
 end
 
+# homebrew
+if test -d "/opt/homebrew/bin/"
+    set -gx fish_user_paths /opt/homebrew/bin/ $fish_user_paths
+end
+
 # Default go binary path
 if test -d "$HOME/go/bin/"
     set -gx fish_user_paths $HOME/go/bin/ $fish_user_paths
@@ -34,11 +39,10 @@ else
     set -U EDITOR nano
 end
 
-set -Ux VAGRANT_DEFAULT_PROVIDER vmware_fusion
-
 set -Ux LANG en_US.UTF-8
 set -Ux LC_ALL en_US.UTF-8
 
+# Google cloud sdk stuff
 if test -f "$HOME/google-cloud-sdk/path.fish.inc"
     source "$HOME/google-cloud-sdk/path.fish.inc"
 end
@@ -71,16 +75,16 @@ end
 test -e {$HOME}/.iterm2_shell_integration.fish ; and source {$HOME}/.iterm2_shell_integration.fish
 
 # Homeshick integration and completions
-. "$HOME/.homesick/repos/homeshick/homeshick.fish"
+source "$HOME/.homesick/repos/homeshick/homeshick.fish"
 source "$HOME/.homesick/repos/homeshick/completions/homeshick.fish"
 # Check if a homeshick refresh is needed
-homeshick --quiet refresh
+#homeshick --quiet refresh
 
 ### Replace builtins with external software if available
 
 # Exa is an ls replacement
 if type -q exa
-  alias ls exa
+  alias ls "exa --time-style long-iso"
 end
 
 # Bat is a fancier cat
@@ -104,4 +108,3 @@ end
 if type -q starship
   starship init fish | source
 end
-
