@@ -10,9 +10,9 @@
     path = ~/projects/.gitconfig
 
 [color]
-        diff = auto
-        status = auto
-        branch = auto
+    diff = auto
+    status = auto
+    branch = auto
 	ui = always
 	interactive = auto
 [alias]
