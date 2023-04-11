@@ -3,6 +3,11 @@ if test -d "$HOME/bin/"
     set -gx fish_user_paths $HOME/bin/ $fish_user_paths
 end
 
+# More generic local binaries
+if test -d "$HOME/.local/bin/"
+    set -gx fish_user_paths $HOME/.local/bin/ $fish_user_paths
+end
+
 # homebrew
 if test -d "/opt/homebrew/bin/"
     set -gx fish_user_paths /opt/homebrew/bin/ $fish_user_paths
