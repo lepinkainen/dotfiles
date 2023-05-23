@@ -1,9 +1,13 @@
-# TODO: https://stackoverflow.com/a/43654115/6469
-# Conditional include for user.email
+# local gitconfig settings, only for this machine
+# use this to override the [user] bit
+# Default
+# [user]
+#    email = riku.lindblad@iki.fi
+#    name = Riku Lindblad
+#    signingkey = XXXXXXXXXXXXXXXX   # GPG key
 
-[user]
-	email = riku.lindblad@iki.fi
-	name = Riku Lindblad
+[include]
+    path = .gitconfig.local
 
 # Include local gitconfig
 [includeIf "gitdir:~/projects/"]
@@ -46,3 +50,9 @@
 	ui = auto
 [core]
 	pager = less
+# Remove useless local branches when fetching
+[fetch]
+    prune = true
+# sign commits
+[commit]
+    gpgsign = true
