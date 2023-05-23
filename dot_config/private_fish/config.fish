@@ -33,10 +33,6 @@ if test -d "/usr/local/opt/sqlite/bin"
     set -gx fish_user_paths "/usr/local/opt/sqlite/bin" $fish_user_paths
 end
 
-if test -d "/usr/local/opt/node@12/bin"
-    set -gx fish_user_paths "/usr/local/opt/node@12/bin" $fish_user_paths
-end
-
 # Open vscode editor in a new window and wait for the file to be saved
 if test -e "/usr/local/bin/code"
     set -U EDITOR code -nw
@@ -63,7 +59,14 @@ if status --is-login
 end
 
 if status --is-interactive
-    atuin init fish --disable-up-arrow | source
+    # Initialize atuin, disable up-arrow search
+    if type -q atuin
+        atuin init fish --disable-up-arrow | source
+    end
+    # init kubectl completions
+    if type -q kubectl
+        kubectl completion fish | source
+    end
 end
 
 
@@ -84,11 +87,8 @@ end
 # iTerm 2 integration
 test -e {$HOME}/.iterm2_shell_integration.fish ; and source {$HOME}/.iterm2_shell_integration.fish
 
-# Homeshick integration and completions
-source "$HOME/.homesick/repos/homeshick/homeshick.fish"
-source "$HOME/.homesick/repos/homeshick/completions/homeshick.fish"
-# Check if a homeshick refresh is needed
-#homeshick --quiet refresh
+# GPG setup, it needs GPG_TTY set to do anything useful
+set -gx GPG_TTY (tty)
 
 ### Replace builtins with external software if available
 
