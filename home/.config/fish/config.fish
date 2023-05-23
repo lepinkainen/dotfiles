@@ -33,8 +33,9 @@ if test -d "/usr/local/opt/sqlite/bin"
     set -gx fish_user_paths "/usr/local/opt/sqlite/bin" $fish_user_paths
 end
 
-if test -d "/usr/local/opt/node@12/bin"
-    set -gx fish_user_paths "/usr/local/opt/node@12/bin" $fish_user_paths
+# More generic binaries
+if test -d "$HOME/.local/bin/"
+    set -gx fish_user_paths $HOME/.local/bin/ $fish_user_paths
 end
 
 # Open vscode editor in a new window and wait for the file to be saved
@@ -60,6 +61,8 @@ end
 # Run for login shells
 if status --is-login
     uptime
+    kubectl completion fish | source
+    atuin init fish | source
 end
 
 # Automatically install fisher
@@ -79,11 +82,8 @@ end
 # iTerm 2 integration
 test -e {$HOME}/.iterm2_shell_integration.fish ; and source {$HOME}/.iterm2_shell_integration.fish
 
-# Homeshick integration and completions
-source "$HOME/.homesick/repos/homeshick/homeshick.fish"
-source "$HOME/.homesick/repos/homeshick/completions/homeshick.fish"
-# Check if a homeshick refresh is needed
-#homeshick --quiet refresh
+# GPG setup
+set -gx GPG_TTY (tty)
 
 ### Replace builtins with external software if available
 
