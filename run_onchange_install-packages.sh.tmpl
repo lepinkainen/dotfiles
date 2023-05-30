@@ -1,9 +1,9 @@
 {{ if eq .chezmoi.os "linux" -}}
 #!/bin/sh
 curl -sS https://starship.rs/install.sh | sh
-sudo apt install tmux ack exa bat fish httpie wget rsync pinentry-mac
+sudo apt install tmux ack exa bat fish httpie wget rsync
 {{ else if eq .chezmoi.os "darwin" -}}
 #!/bin/sh
 brew install starship
-brew install tmux ack exa bat fish httpie wget rsync
+brew install tmux ack exa bat fish httpie wget rsync pinentry-mac
 {{ end -}}
