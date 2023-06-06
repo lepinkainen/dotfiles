@@ -20,7 +20,7 @@
 	ui = always
 	interactive = auto
 [alias]
-    worklog = log --pretty=format:"* %s" --author $(git config user.email)
+    worklog = "!sh -c 'git log --pretty=format:\"* %s\" --author \"$(git config user.email)\"'"
 
     s = status --short --branch
 
