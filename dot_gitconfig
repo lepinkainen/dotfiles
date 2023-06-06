@@ -20,6 +20,8 @@
 	ui = always
 	interactive = auto
 [alias]
+    worklog = git log --pretty=format:"* %s" --author $(git config user.email)
+
     s = status --short --branch
 
     up = !git pull --rebase --prune $@ && git submodule update --init --recursive
