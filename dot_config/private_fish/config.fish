@@ -94,7 +94,7 @@ set -gx GPG_TTY (tty)
 
 # Exa is an ls replacement
 if type -q exa
-  alias ls "exa --time-style long-iso"
+  alias ls "exa --time-style long-iso --git --header"
 end
 
 # Bat is a fancier cat
