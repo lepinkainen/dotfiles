@@ -39,9 +39,9 @@ show_always = false
 disabled = false
 detect_files = ['k8s'] # only show kubernetes if this file exists
 
-[[battery.display]]
-threshold = 10
-style = 'bold red'
+#[[battery.display]]
+#threshold = 10
+#style = 'bold red'
 
 [dotnet]
 symbol = '🥅 '
