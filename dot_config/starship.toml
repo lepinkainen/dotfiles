@@ -43,3 +43,6 @@ detect_files = ['k8s'] # only show kubernetes if this file exists
 symbol = '🥅 '
 style = 'green'
 heuristic = false
+
+[battery]
+disabled = true
