@@ -92,9 +92,9 @@ set -gx GPG_TTY (tty)
 
 ### Replace builtins with external software if available
 
-# Exa is an ls replacement
-if type -q exa
-  alias ls "exa --time-style long-iso --git --header"
+# Eza is an ls replacement. Exa is deprecated
+if type -q eza
+  alias ls "eza --time-style long-iso --icons --no-quotes --git --header"
 end
 
 # Bat is a fancier cat
