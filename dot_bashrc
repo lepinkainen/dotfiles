@@ -174,76 +174,6 @@ WHITE="\[\033[1;37m\]"
 LIGHT_GRAY="\[\033[0;37m\]"
 COLOR_NONE="\[\e[0m\]"
 
-function generate_git_bar {
-  git_status="$(git status 2> /dev/null)"
-  branch_pattern="On branch ([^${IFS}]*)"
-  detached_branch_pattern="Not currently on any branch"
-  remote_pattern="Your branch is (.*) of"
-  diverge_pattern="Your branch and (.*) have diverged"
-  detached_at_pattern="HEAD detached at ([^${IFS}]*)"
-
-  if [[ ${git_status}} =~ "Changed but not updated" ]]; then
-    flags="${RED}?" # Old git???
-  fi
-
-  if [[ ${git_status}} =~ "Untracked files" ]]; then
-    flags="${flags}${RED}!"
-  fi
-
-  if [[ ${git_status}} =~ "Changes not staged for commit" ]]; then
-    flags="${flags}${RED}⚡"
-  fi
-
-  if [[ ${git_status}} =~ "Changes to be committed" ]]; then
-    flags="${flags}${RED}√"
-  fi
-
-  if [[ ${git_status}} =~ "Unmerged paths" ]]; then
-    flags="${flags}${RED}≈"
-  fi
-
-  # stuff in stash
-  if [ "$(git stash list)" ]; then
-    flags="${flags}${RED}˷"
-  fi
-
-  if [[ ${git_status} =~ ${remote_pattern} ]]; then
-    if [[ ${BASH_REMATCH[1]} == "ahead" ]]; then
-      flags="${flags}${YELLOW}↑"
-    else
-      flags="${flags}${YELLOW}↓"
-    fi
-  fi
-
-  if [[ ${git_status} =~ ${diverge_pattern} ]]; then
-    flags="${flags}${YELLOW}↕"
-  fi
-
-  if [[ ${git_status} =~ ${branch_pattern} ]]; then
-    branch="${LIGHT_GRAY}${BASH_REMATCH[1]}"
-  elif [[ ${git_status} =~ ${detached_branch_pattern} ]]; then
-    branch="${RED}NO BRANCH"
-  elif [[ ${git_status} =~ ${detached_at_pattern} ]]; then
-    branch="${RED}${BASH_REMATCH[1]}"
-  fi
-
-
-  if [ "${flags}" ]; then
-    flags="${COLOR_NONE}|${flags}"
-  fi
-
-  echo "${COLOR_NONE}(${branch}${COLOR_NONE}${flags}${COLOR_NONE})"
-}
-
-function generate_virtualenv_bar {
-    if test -z "$VIRTUAL_ENV" ; then
-        PYTHON_VIRTUALENV=""
-    else
-        PYTHON_VIRTUALENV="${LIGHT_GREEN}[`basename \"$VIRTUAL_ENV\"`]${COLOR_NONE} "
-    fi
-
-    echo $PYTHON_VIRTUALENV
-}
 
 function stopped_jobs(){
   if [  "$(jobs 2>&1)" != "" ]; then
@@ -259,57 +189,6 @@ function tmux_bg(){
     }
   fi
 }
-
-function prompt_func() {
-  exit_status=$?
-  local _jobs=$(stopped_jobs)
-
-  # Use red # as prompt char when root
-  if [ $(id -u) -eq 0 ]; then
-    prompt_char="# "
-    host="${RED}\u@\h"
-  else
-    prompt_char="$ "
-    host="${GREEN}\u@\h"
-  fi
-
-  # Tun prompt char to red if the last command failed
-  if [ ! ${exit_status} -eq 0 ]; then
-    prompt_char="${RED}${prompt_char}${COLOR_NONE}"
-  else
-    prompt_char="${COLOR_NONE}${prompt_char}"
-  fi
-
-  # titlebar = line above prompt
-  # user@host $PWD
-  titlebar="${host} ${YELLOW}\w"
-
-  # Git repo detection & git-bar
-  git rev-parse --git-dir > /dev/null 2>&1
-  if [ $? -eq 0 ]; then
-    # In Git repo
-    git_bar="$(generate_git_bar)"
-  else
-    git_bar=""
-  fi
-
-  virtualenv_bar="$(generate_virtualenv_bar)"
-
-  PS1="${titlebar}\n${_jobs}$(tmux_bg)${virtualenv_bar}${git_bar}${prompt_char}"
-  title="\033]0;"
-  # SSH connection to host, display host name in title
-  if [ "$SSH_CONNECTION" != "" -o "${USER}" = "root" ]; then
-    title="${title}$(echo $HOSTNAME|cut -d . -f 1): "
-  fi
-  title="${title}${PWD/$HOME/~}\007"
-
-  # Append last command to ~/.bash_history
-  history -a
-  # set terminal title
-  echo -ne $title
-}
-
-PROMPT_COMMAND=prompt_func
 
 eval "$(starship init bash)"
 
