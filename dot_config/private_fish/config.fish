@@ -114,6 +114,10 @@ else
   git config --global core.pager "less"
 end
 
+if type -q mise
+    mise activate fish | source
+end
+
 # Use starship prompt if installed
 if type -q starship
   starship init fish | source
