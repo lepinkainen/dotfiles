@@ -52,6 +52,7 @@
 	ui = auto
 [core]
 	pager = less
+    autocrlf = input
 # Remove useless local branches when fetching
 [fetch]
     prune = true
