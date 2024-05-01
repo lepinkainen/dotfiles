@@ -53,9 +53,15 @@
 [core]
 	pager = less
     autocrlf = input
+
 # Remove useless local branches when fetching
 [fetch]
     prune = true
-# sign commits
+
+# sign commits with SSH key stored in 1password
 [commit]
     gpgsign = true
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
