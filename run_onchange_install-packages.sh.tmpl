@@ -3,16 +3,22 @@
 if sudo -n true 2>/dev/null; then 
     echo "sudo permissions detected, installing packages"
     curl -sS https://starship.rs/install.sh | sh
-    sudo apt install tmux ack exa bat fish httpie wget rsync pinentry-tty btop
+    sudo apt install tmux ack exa bat fish httpie wget rsync pinentry-tty btop atuin
 else
     echo "no sudo permissions, skipping package install"
 fi
 {{ else if eq .chezmoi.os "darwin" -}}
 #!/bin/sh
 brew install starship
-brew install tmux ack exa bat fish httpie wget rsync pinentry-mac btop mise
+brew install tmux ack exa bat fish httpie wget rsync pinentry-mac btop atuin mise
 # Install phoenix ffor window management
 brew install --cask phoenix
 # Karabiner for hyperkey
 brew install --cask karabiner-elements
+# Install fonts
+brew install --cask homebrew/cask-fonts/font-fira-mono-nerd-font homebrew/cask-fonts/font-fira-code-nerd-font
+{{ else if eq .chezmoi.os "windows" -}}
+echo "Windows not supported"
+{{ else -}}
+echo "Unsupported OS"
 {{ end -}}
