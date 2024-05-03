@@ -12,7 +12,10 @@ local homeLayout = {
     }
 }
 
+-- open application for home and arrange correctly
 hs.hotkey.bind(hyper, "1", function()
+    hs.application.launchOrFocus("Telegram")
+    hs.application.launchOrFocus("Discord")
     hs.layout.apply(homeLayout)
     hs.notify.new({
         title = "Hammerspoon",
