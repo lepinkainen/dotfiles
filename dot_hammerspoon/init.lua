@@ -42,3 +42,5 @@ function arrangeTopTwoWindowsLeftRight()
 end
 
 hs.hotkey.bind(hyper, "3", function() arrangeTopTwoWindowsLeftRight() end)
+
+if hs.host.names()[1]:lower():find("mimic") then print("at home") end
