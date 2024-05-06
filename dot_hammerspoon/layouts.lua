@@ -1,5 +1,7 @@
 local hyper = {"cmd", "alt", "ctrl", "shift"}
 
+-- list available displays
+-- hs.fnutils.each(hs.screen.allScreens(), function(screen) print(screen) end)
 local laptopScreen = "Built-in Retina Display"
 local mainDisplay = "L32p-30"
 local verticalScreen = "LEN P27h-10"

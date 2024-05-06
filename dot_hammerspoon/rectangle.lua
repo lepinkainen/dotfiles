@@ -13,14 +13,14 @@ local lastCallTime = 0
 
 -- Order screens based on x position left to right
 -- This allows prevScreen and nextScreen to work correctly
-function getScreensOrderedLeftToRight()
+local function getScreensOrderedLeftToRight()
     local screens = hs.screen.allScreens()
     table.sort(screens, function(a, b) return a:frame().x < b:frame().x end)
     return screens
 end
 
 -- Find the next screen to the right of the current one
-function nextScreen(screen)
+local function nextScreen(screen)
     log.d("Running nextScreen function")
 
     local screens = getScreensOrderedLeftToRight()
@@ -33,7 +33,7 @@ function nextScreen(screen)
 end
 
 -- Find the previous screen to the left of the current one
-function prevScreen(screen)
+local function prevScreen(screen)
     log.d("Running prevScreen function")
 
     local screens = getScreensOrderedLeftToRight()
@@ -46,14 +46,14 @@ function prevScreen(screen)
 end
 
 -- Check if the window is currently docked to the left half
-function isLeftHalf(win, screen)
+local function isLeftHalf(win, screen)
     local f = win:frame()
     local max = screen:frame()
     return math.abs(f.x - max.x) <= tolerance and math.abs(f.h - max.h) <=
                tolerance
 end
 
-function isRightHalf(win, screen)
+local function isRightHalf(win, screen)
     local f = win:frame()
     local max = screen:frame()
     return math.abs((f.x + f.w) - (max.x + max.w)) <= tolerance and
@@ -71,7 +71,7 @@ function setWindowFrame(win, x, y, w, h)
 end
 
 -- Function to resize frame 
-function resize(key, frameFunc)
+local function resize(key, frameFunc)
     log.d("Running resize function with key " .. key)
 
     hs.hotkey.bind(rectangleKey, key, function()

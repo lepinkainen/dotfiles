@@ -16,7 +16,7 @@ hs.hotkey.bind(hyper, "k", PostURLtoWebService)
 hs.hotkey.bind(hyper, "l", function() ApplyLayout() end)
 
 -- Experimental stuff
-function arrangeTopTwoWindowsLeftRight()
+local function arrangeTopTwoWindowsLeftRight()
     -- Get the two topmost windows
     local win1 = hs.window.orderedWindows()[1]
     local win2 = hs.window.orderedWindows()[2]
@@ -60,7 +60,3 @@ hs.hotkey.bind(hyper, "5", function()
     chooser:choices(choices)
     chooser:show()
 end)
-
--- list available displays
--- hs.fnutils.each(hs.screen.allScreens(), function(screen) print(screen) end)
-
