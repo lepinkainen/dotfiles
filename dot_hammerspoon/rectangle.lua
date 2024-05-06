@@ -1,11 +1,15 @@
 local rectangleKey = {"alt", "ctrl"}
 
--- Check if the window is currently docked to the right half
-function isRightHalfOld(win, screen)
-    local f = win:frame()
-    local max = screen:frame()
-    return f.x == max.x + (max.w / 2) and f.y == max.y and f.w == max.w / 2 and f.h == max.h
-end
+local log = hs.logger.new('rectangle', 'info')
+
+-- Tolerance in pixels for window position and size
+-- Window height is sometimes a pixel off preventing isRightHalf and isLeftHalf from returning true
+local tolerance = 1
+
+-- Debounce time in seconds
+local debounceTime = 0.1
+-- Store the time of the last function call
+local lastCallTime = 0
 
 -- Order screens based on x position left to right
 -- This allows prevScreen and nextScreen to work correctly
@@ -17,18 +21,28 @@ function getScreensOrderedLeftToRight()
     return screens
 end
 
-function isRightHalf(win, screen)
-    local f = win:frame()
-    local max = screen:frame()
-    return f.x + f.w == max.x + max.w
-end
-
 -- Find the next screen to the right of the current one
 function nextScreen(screen)
+    log.d("Running nextScreen function")
+
     local screens = getScreensOrderedLeftToRight()
     for s = 1, #screens do
         if screens[s]:id() == screen:id() then
+            log.d("Found current screen at index " .. s)
             return screens[(s % #screens) + 1]
+        end
+    end
+end
+
+-- Find the previous screen to the left of the current one
+function prevScreen(screen)
+    log.d("Running prevScreen function")
+
+    local screens = getScreensOrderedLeftToRight()
+    for s = 1, #screens do
+        if screens[s]:id() == screen:id() then
+            log.d("Found current screen at index " .. s)
+            return screens[(s == 1 and #screens or s - 1)]
         end
     end
 end
@@ -37,17 +51,13 @@ end
 function isLeftHalf(win, screen)
     local f = win:frame()
     local max = screen:frame()
-    return f.x == max.x and f.y == max.y and f.w == max.w / 2 and f.h == max.h
+    return math.abs(f.x - max.x) <= tolerance and math.abs(f.h - max.h) <= tolerance
 end
 
--- Find the previous screen to the left of the current one
-function prevScreen(screen)
-    local screens = getScreensOrderedLeftToRight()
-    for s = 1, #screens do
-        if screens[s]:id() == screen:id() then
-            return screens[(s == 1 and #screens or s - 1)]
-        end
-    end
+function isRightHalf(win, screen)
+    local f = win:frame()
+    local max = screen:frame()
+    return math.abs((f.x + f.w) - (max.x + max.w)) <= tolerance and math.abs(f.h - max.h) <= tolerance
 end
 
 -- Function to set window position and size  
@@ -62,11 +72,22 @@ end
 
 -- Function to resize frame 
 function resize(key, frameFunc)
+    log.d("Running resize function with key " .. key)
+
     hs.hotkey.bind(rectangleKey, key, function()
-        local win = hs.window.focusedWindow()
-        local screen = win:screen()
-        local max = screen:frame()
-        frameFunc(win, max)
+        local currentTime = hs.timer.secondsSinceEpoch()
+        -- Only call the function if enough time has passed since the last call
+        if currentTime - lastCallTime >= debounceTime then
+            log.d("Enough time has passed since the last call, running frameFunc")
+            local win = hs.window.focusedWindow()
+            local screen = win:screen()
+            local max = screen:frame()
+            frameFunc(win, max)
+            lastCallTime = currentTime
+        else
+            log.d("Not enough time has passed since the last call, skipping frameFunc")
+
+        end
     end)
 end
 
@@ -105,11 +126,17 @@ local frames = {
 }
 
 -- Left half and Right half functions move the window to another screen when pressed again
+-- Left side needs some extra love because the right side is correctly positioned on top left after moving screens, left side is not
 frames.left = function(win, max)
     local screen = win:screen()
-    if isLeftHalf(win, screen) then
+    if isRightHalf(win, screen) then
+        setWindowFrame(win, max.x, max.y, max.w / 2, max.h)
+    elseif isLeftHalf(win, screen) then
         local prev = prevScreen(screen)
         if prev then
+            -- Move the window to the new screen first
+            setWindowFrame(win, prev:frame().x + prev:frame().w / 2, prev:frame().y, win:frame().w, win:frame().h)
+            -- Then resize it to fit the new screen
             setWindowFrame(win, prev:frame().x + prev:frame().w / 2, prev:frame().y, prev:frame().w / 2, prev:frame().h)
         end
     else
@@ -122,6 +149,9 @@ frames.right = function(win, max)
     if isRightHalf(win, screen) then
         local next = nextScreen(screen)
         if next then
+            -- Move the window to the new screen first
+            setWindowFrame(win, next:frame().x, next:frame().y, win:frame().w, win:frame().h)
+            -- Then resize it to fit the new screen
             setWindowFrame(win, next:frame().x, next:frame().y, next:frame().w / 2, next:frame().h)
         end
     else
