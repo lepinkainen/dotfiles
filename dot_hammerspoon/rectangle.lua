@@ -15,9 +15,7 @@ local lastCallTime = 0
 -- This allows prevScreen and nextScreen to work correctly
 function getScreensOrderedLeftToRight()
     local screens = hs.screen.allScreens()
-    table.sort(screens, function(a, b)
-        return a:frame().x < b:frame().x
-    end)
+    table.sort(screens, function(a, b) return a:frame().x < b:frame().x end)
     return screens
 end
 
@@ -51,13 +49,15 @@ end
 function isLeftHalf(win, screen)
     local f = win:frame()
     local max = screen:frame()
-    return math.abs(f.x - max.x) <= tolerance and math.abs(f.h - max.h) <= tolerance
+    return math.abs(f.x - max.x) <= tolerance and math.abs(f.h - max.h) <=
+               tolerance
 end
 
 function isRightHalf(win, screen)
     local f = win:frame()
     local max = screen:frame()
-    return math.abs((f.x + f.w) - (max.x + max.w)) <= tolerance and math.abs(f.h - max.h) <= tolerance
+    return math.abs((f.x + f.w) - (max.x + max.w)) <= tolerance and
+               math.abs(f.h - max.h) <= tolerance
 end
 
 -- Function to set window position and size  
@@ -78,14 +78,16 @@ function resize(key, frameFunc)
         local currentTime = hs.timer.secondsSinceEpoch()
         -- Only call the function if enough time has passed since the last call
         if currentTime - lastCallTime >= debounceTime then
-            log.d("Enough time has passed since the last call, running frameFunc")
+            log.d(
+                "Enough time has passed since the last call, running frameFunc")
             local win = hs.window.focusedWindow()
             local screen = win:screen()
             local max = screen:frame()
             frameFunc(win, max)
             lastCallTime = currentTime
         else
-            log.d("Not enough time has passed since the last call, skipping frameFunc")
+            log.d(
+                "Not enough time has passed since the last call, skipping frameFunc")
 
         end
     end)
@@ -112,7 +114,8 @@ local frames = {
         setWindowFrame(win, max.x, max.y + max.h / 2, max.w / 2, max.h / 2)
     end,
     k = function(win, max)
-        setWindowFrame(win, max.x + max.w / 2, max.y + max.h / 2, max.w / 2, max.h / 2)
+        setWindowFrame(win, max.x + max.w / 2, max.y + max.h / 2, max.w / 2,
+                       max.h / 2)
     end,
     d = function(win, max)
         setWindowFrame(win, max.x, max.y, max.w / 3, max.h)
@@ -135,9 +138,11 @@ frames.left = function(win, max)
         local prev = prevScreen(screen)
         if prev then
             -- Move the window to the new screen first
-            setWindowFrame(win, prev:frame().x + prev:frame().w / 2, prev:frame().y, win:frame().w, win:frame().h)
+            setWindowFrame(win, prev:frame().x + prev:frame().w / 2,
+                           prev:frame().y, win:frame().w, win:frame().h)
             -- Then resize it to fit the new screen
-            setWindowFrame(win, prev:frame().x + prev:frame().w / 2, prev:frame().y, prev:frame().w / 2, prev:frame().h)
+            setWindowFrame(win, prev:frame().x + prev:frame().w / 2,
+                           prev:frame().y, prev:frame().w / 2, prev:frame().h)
         end
     else
         setWindowFrame(win, max.x, max.y, max.w / 2, max.h)
@@ -150,9 +155,11 @@ frames.right = function(win, max)
         local next = nextScreen(screen)
         if next then
             -- Move the window to the new screen first
-            setWindowFrame(win, next:frame().x, next:frame().y, win:frame().w, win:frame().h)
+            setWindowFrame(win, next:frame().x, next:frame().y, win:frame().w,
+                           win:frame().h)
             -- Then resize it to fit the new screen
-            setWindowFrame(win, next:frame().x, next:frame().y, next:frame().w / 2, next:frame().h)
+            setWindowFrame(win, next:frame().x, next:frame().y,
+                           next:frame().w / 2, next:frame().h)
         end
     else
         setWindowFrame(win, max.x + max.w / 2, max.y, max.w / 2, max.h)
@@ -160,6 +167,4 @@ frames.right = function(win, max)
 end
 
 -- Bind keys to frame functions
-for key, frame in pairs(frames) do
-    resize(key, frame)
-end
+for key, frame in pairs(frames) do resize(key, frame) end
