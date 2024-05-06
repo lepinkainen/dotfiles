@@ -107,13 +107,6 @@ if type -q batcat
   alias cat batcat
 end
 
-# Swap git pager depending on what's installed
-if type -q diff-so-fancy
-  git config --global core.pager "diff-so-fancy | less --tabs=4 -RFX"
-else
-  git config --global core.pager "less"
-end
-
 if type -q mise
     mise activate fish | source
 end
