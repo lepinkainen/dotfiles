@@ -4,8 +4,17 @@ local rectangleKey = {"alt", "ctrl"}
 function isRightHalfOld(win, screen)
     local f = win:frame()
     local max = screen:frame()
-    return f.x == max.x + (max.w / 2) and f.y == max.y and f.w == max.w / 2 and
-               f.h == max.h
+    return f.x == max.x + (max.w / 2) and f.y == max.y and f.w == max.w / 2 and f.h == max.h
+end
+
+-- Order screens based on x position left to right
+-- This allows prevScreen and nextScreen to work correctly
+function getScreensOrderedLeftToRight()
+    local screens = hs.screen.allScreens()
+    table.sort(screens, function(a, b)
+        return a:frame().x < b:frame().x
+    end)
+    return screens
 end
 
 function isRightHalf(win, screen)
@@ -16,7 +25,7 @@ end
 
 -- Find the next screen to the right of the current one
 function nextScreen(screen)
-    local screens = hs.screen.allScreens()
+    local screens = getScreensOrderedLeftToRight()
     for s = 1, #screens do
         if screens[s]:id() == screen:id() then
             return screens[(s % #screens) + 1]
@@ -33,7 +42,7 @@ end
 
 -- Find the previous screen to the left of the current one
 function prevScreen(screen)
-    local screens = hs.screen.allScreens()
+    local screens = getScreensOrderedLeftToRight()
     for s = 1, #screens do
         if screens[s]:id() == screen:id() then
             return screens[(s == 1 and #screens or s - 1)]
@@ -82,8 +91,7 @@ local frames = {
         setWindowFrame(win, max.x, max.y + max.h / 2, max.w / 2, max.h / 2)
     end,
     k = function(win, max)
-        setWindowFrame(win, max.x + max.w / 2, max.y + max.h / 2, max.w / 2,
-                       max.h / 2)
+        setWindowFrame(win, max.x + max.w / 2, max.y + max.h / 2, max.w / 2, max.h / 2)
     end,
     d = function(win, max)
         setWindowFrame(win, max.x, max.y, max.w / 3, max.h)
@@ -102,8 +110,7 @@ frames.left = function(win, max)
     if isLeftHalf(win, screen) then
         local prev = prevScreen(screen)
         if prev then
-            setWindowFrame(win, prev:frame().x + prev:frame().w / 2,
-                           prev:frame().y, prev:frame().w / 2, prev:frame().h)
+            setWindowFrame(win, prev:frame().x + prev:frame().w / 2, prev:frame().y, prev:frame().w / 2, prev:frame().h)
         end
     else
         setWindowFrame(win, max.x, max.y, max.w / 2, max.h)
@@ -115,8 +122,7 @@ frames.right = function(win, max)
     if isRightHalf(win, screen) then
         local next = nextScreen(screen)
         if next then
-            setWindowFrame(win, next:frame().x, next:frame().y,
-                           next:frame().w / 2, next:frame().h)
+            setWindowFrame(win, next:frame().x, next:frame().y, next:frame().w / 2, next:frame().h)
         end
     else
         setWindowFrame(win, max.x + max.w / 2, max.y, max.w / 2, max.h)
@@ -124,4 +130,6 @@ frames.right = function(win, max)
 end
 
 -- Bind keys to frame functions
-for key, frame in pairs(frames) do resize(key, frame) end
+for key, frame in pairs(frames) do
+    resize(key, frame)
+end
