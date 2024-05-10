@@ -90,9 +90,10 @@ local function applyWorkAtOfficeLayout()
 end
 
 function ApplyLayout()
-    local layoutName = "ERROR"
+    local layoutName = nil
+    local machineName = hs.host.names()[1]:lower()
 
-    if hs.host.names()[1]:lower():find("mimic") then
+    if machineName:find("mimic") then
         applyHomeLayout()
         layoutName = "Home"
     end
@@ -101,27 +102,33 @@ function ApplyLayout()
     -- type print(hs.location.get()) in the console
     -- go to System Preferences -> Security & Privacy -> Privacy -> Location Services
     -- check Hammerspoon
-    if hs.host.names()[1]:lower():find("mystique") then
-        if hs.wifi.currentNetwork() == nil then
-            print("work mode - no wifi")
-            layoutName = "Work mode - no wifi"
-        end
-        if hs.wifi.currentNetwork() == "Rocinante-5G" then
-            applyWorkAtHomeLayout()
-            layoutName = "Work at home"
-        end
-        if hs.wifi.currentNetwork() == "Metacore" then
-            applyWorkAtOfficeLayout()
-            layoutName = "Work at office"
+    if machineName:find("mystique") then
+        -- Working with plain laptop, no displays connected
+        if #hs.screen.allScreens() == 1 then
+            log.i("work mode - one display")
+            layoutName = "Work mode - one display"
         end
 
-        hs.notify.new({
-            autoWithdraw = true,
-            title = "Hammerspoon Layout",
-            informativeText = "Layout applied: " .. layoutName,
-            withdrawAfter = 2,
-            contentimage = hs.image.imageFromPath("/Users/riku.lindblad/Pictures/avatar.png"),
-            setIdImage = hs.image.imageFromPath("/Users/riku.lindblad/Pictures/avatar.png")
-        }):send()
+        -- Working with laptop and external display(s)
+        -- At home
+        if hs.wifi.currentNetwork() == "Rocinante-5G" and layoutName == nil then
+            applyWorkAtHomeLayout()
+            log.i("work mode - work at home")
+            layoutName = "Work at home"
+        end
+        -- At the office
+        if hs.wifi.currentNetwork() == "Metacore" and layoutName == nil then
+            applyWorkAtOfficeLayout()
+            log.i("work mode - work at office")
+            layoutName = "Work at office"
+        end
     end
+
+    -- Notify about applied layout
+    hs.notify.new({
+        autoWithdraw = true,
+        title = "Hammerspoon Layout",
+        informativeText = "Layout applied\n🧑🏼‍💻: " .. machineName .. "\n🪟: " .. layoutName,
+        withdrawAfter = 5,
+    }):send()
 end
