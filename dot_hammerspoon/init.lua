@@ -1,4 +1,4 @@
-local hyper = {"cmd", "alt", "ctrl", "shift"}
+local hyper = { "cmd", "alt", "ctrl", "shift" }
 
 hs.loadSpoon("ReloadConfiguration")
 spoon.ReloadConfiguration:start()
@@ -26,7 +26,7 @@ local function arrangeTopTwoWindowsLeftRight()
         local max = screen:frame()
 
         -- Set window 1 to occupy the left half
-        win1:setFrame({x = max.x, y = max.y, w = max.w / 2, h = max.h}, 0)
+        win1:setFrame({ x = max.x, y = max.y, w = max.w / 2, h = max.h }, 0)
 
         -- Set window 2 to occupy the right half
         win2:setFrame({
