@@ -28,6 +28,25 @@ local function setMainWindowFullscreen(appName)
     end
 end
 
+local function unsetMainWindowFullscreen(appName)
+    local app = hs.application.get(appName)
+    if app then
+        log.d("Found " .. appName)
+        local mainWindow = app:mainWindow()
+        if mainWindow then
+            log.d("Found main window")
+            local result = mainWindow:setFullScreen(false)
+            if result then
+                log.d("Unset main window fullscreen")
+            else
+                log.d("Failed to unset main window fullscreen")
+            end
+        else
+            log.d("No main window found")
+        end
+    end
+end
+
 local function applyHomeLayout()
     local homeLayout = {
         { "Telegram", nil, verticalScreen, hs.geometry.unitrect(0, 0, 1, 0.5),   nil, nil },
@@ -61,6 +80,10 @@ local function applyWorkAtHomeLayout()
     hs.application.launchOrFocusByBundleID("com.tinyspeck.slackmacgap")
     hs.application.launchOrFocusByBundleID("com.apple.Music")
     hs.application.launchOrFocusByBundleID("com.googlecode.iterm2")
+
+    -- -> office to home -> unset fullscreen to make layout work
+    unsetMainWindowFullscreen("ru.keepcoder.Telegram")
+    unsetMainWindowFullscreen("com.hnc.Discord")
 
     hs.layout.apply(workAtHomeLayout)
 end
