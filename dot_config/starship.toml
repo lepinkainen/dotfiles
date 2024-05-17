@@ -35,10 +35,6 @@ format = 'user: [$user]($style) '
 disabled = false
 show_always = false
 
-[kubernetes]
-disabled = false
-detect_files = ['k8s'] # only show kubernetes if this file exists
-
 [[battery.display]]
 threshold = 10
 style = 'bold red'
