@@ -1,4 +1,4 @@
-local rectangleKey = {"alt", "ctrl"}
+local rectangleKey = { "alt", "ctrl" }
 
 local log = hs.logger.new('rectangle', 'info')
 
@@ -45,22 +45,32 @@ local function prevScreen(screen)
     end
 end
 
+
+-- Check if the window is currently occupying the full screen
+local function isFullScreen(win, screen)
+    local f = win:frame()
+    local max = screen:frame()
+    return math.abs(f.x - max.x) <= tolerance and math.abs(f.y - max.y) <=
+        tolerance and math.abs(f.w - max.w) <= tolerance and math.abs(
+            f.h - max.h) <= tolerance
+end
+
 -- Check if the window is currently docked to the left half
 local function isLeftHalf(win, screen)
     local f = win:frame()
     local max = screen:frame()
     return math.abs(f.x - max.x) <= tolerance and math.abs(f.h - max.h) <=
-               tolerance
+        tolerance
 end
 
 local function isRightHalf(win, screen)
     local f = win:frame()
     local max = screen:frame()
     return math.abs((f.x + f.w) - (max.x + max.w)) <= tolerance and
-               math.abs(f.h - max.h) <= tolerance
+        math.abs(f.h - max.h) <= tolerance
 end
 
--- Function to set window position and size  
+-- Function to set window position and size
 function setWindowFrame(win, x, y, w, h)
     local f = win:frame()
     f.x = x
@@ -70,7 +80,7 @@ function setWindowFrame(win, x, y, w, h)
     win:setFrame(f, 0)
 end
 
--- Function to resize frame 
+-- Function to resize frame
 local function resize(key, frameFunc)
     log.d("Running resize function with key " .. key)
 
@@ -88,7 +98,6 @@ local function resize(key, frameFunc)
         else
             log.d(
                 "Not enough time has passed since the last call, skipping frameFunc")
-
         end
     end)
 end
@@ -115,7 +124,7 @@ local frames = {
     end,
     k = function(win, max)
         setWindowFrame(win, max.x + max.w / 2, max.y + max.h / 2, max.w / 2,
-                       max.h / 2)
+            max.h / 2)
     end,
     d = function(win, max)
         setWindowFrame(win, max.x, max.y, max.w / 3, max.h)
@@ -133,16 +142,16 @@ local frames = {
 frames.left = function(win, max)
     local screen = win:screen()
     if isRightHalf(win, screen) then
-        setWindowFrame(win, max.x, max.y, max.w / 2, max.h)
+        setWindowFrame(win, max.x, max.y, max.w / 2, max.h) -- Move to left half
     elseif isLeftHalf(win, screen) then
         local prev = prevScreen(screen)
         if prev then
             -- Move the window to the new screen first
             setWindowFrame(win, prev:frame().x + prev:frame().w / 2,
-                           prev:frame().y, win:frame().w, win:frame().h)
+                prev:frame().y, win:frame().w, win:frame().h)
             -- Then resize it to fit the new screen
             setWindowFrame(win, prev:frame().x + prev:frame().w / 2,
-                           prev:frame().y, prev:frame().w / 2, prev:frame().h)
+                prev:frame().y, prev:frame().w / 2, prev:frame().h)
         end
     else
         setWindowFrame(win, max.x, max.y, max.w / 2, max.h)
@@ -151,15 +160,16 @@ end
 
 frames.right = function(win, max)
     local screen = win:screen()
-    if isRightHalf(win, screen) then
+    -- don't move the window if it's fullscreen, make it right half instead
+    if isRightHalf(win, screen) and not isFullScreen(win, screen) then
         local next = nextScreen(screen)
         if next then
             -- Move the window to the new screen first
             setWindowFrame(win, next:frame().x, next:frame().y, win:frame().w,
-                           win:frame().h)
+                win:frame().h)
             -- Then resize it to fit the new screen
             setWindowFrame(win, next:frame().x, next:frame().y,
-                           next:frame().w / 2, next:frame().h)
+                next:frame().w / 2, next:frame().h)
         end
     else
         setWindowFrame(win, max.x + max.w / 2, max.y, max.w / 2, max.h)
