@@ -126,6 +126,7 @@ function ApplyLayout()
     -- go to System Preferences -> Security & Privacy -> Privacy -> Location Services
     -- check Hammerspoon
     if machineName:find("mystique") then
+        log.i("work computer")
         -- Working with plain laptop, no displays connected
         if #hs.screen.allScreens() == 1 then
             log.i("work mode - one display")
