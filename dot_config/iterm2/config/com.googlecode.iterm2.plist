@@ -18,6 +18,10 @@
 	<string>manual</string>
 	<key>Default Bookmark Guid</key>
 	<string>282430F3-D0FC-4DCA-BAE5-7C3B8380B88E</string>
+	<key>DefaultTabBarHeight</key>
+	<real>28</real>
+	<key>EnableProxyIcon</key>
+	<true/>
 	<key>HapticFeedbackForEsc</key>
 	<false/>
 	<key>HotkeyMigratedFromSingleToMulti</key>
@@ -29,6 +33,10 @@
 		<dict>
 			<key>ASCII Anti Aliased</key>
 			<true/>
+			<key>ASCII Ligatures</key>
+			<true/>
+			<key>Allow Title Reporting</key>
+			<false/>
 			<key>Ambiguous Double Width</key>
 			<false/>
 			<key>Ansi 0 Color</key>
@@ -241,6 +249,8 @@
 			<string>Default</string>
 			<key>Disable Window Resizing</key>
 			<true/>
+			<key>Draw Powerline Glyphs</key>
+			<true/>
 			<key>Flashing Bell</key>
 			<false/>
 			<key>Foreground Color</key>
@@ -256,6 +266,8 @@
 			<string>282430F3-D0FC-4DCA-BAE5-7C3B8380B88E</string>
 			<key>Horizontal Spacing</key>
 			<real>1</real>
+			<key>Icon</key>
+			<integer>1</integer>
 			<key>Idle Code</key>
 			<integer>0</integer>
 			<key>Jobs to Ignore</key>
@@ -548,6 +560,8 @@
 					<string>[1;5F</string>
 				</dict>
 			</dict>
+			<key>Load Shell Integration Automatically</key>
+			<true/>
 			<key>Mouse Reporting</key>
 			<true/>
 			<key>Name</key>
@@ -661,6 +675,10 @@
 	<false/>
 	<key>SoundForEsc</key>
 	<false/>
+	<key>StretchTabsToFillBar</key>
+	<true/>
+	<key>TabStyleWithAutomaticOption</key>
+	<integer>4</integer>
 	<key>VisualIndicatorForEsc</key>
 	<false/>
 	<key>findMode_iTerm</key>
