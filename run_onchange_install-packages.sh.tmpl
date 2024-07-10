@@ -2,10 +2,17 @@
 #!/bin/sh
 if sudo -n true 2>/dev/null; then 
     echo "sudo permissions detected, installing packages"
-    echo "Starship"
-    curl -sS https://starship.rs/install.sh | sh
-    echo "Atuin"
-    curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
+    # Check for Starship
+    if [ ! -x "$(command -v starship)" ]; then
+        echo "Installing Starship..."
+        curl -sS https://starship.rs/install.sh | sh
+    fi
+
+    # Check for Atuin
+    if [ ! -x "$(command -v atuin)" ]; then
+        echo "Installing Atuin..."
+        curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
+    fi
     sudo apt install tmux ack exa bat fish httpie wget rsync pinentry-tty btop  # git-delta
 else
     echo "no sudo permissions, skipping package install"
