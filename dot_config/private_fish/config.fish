@@ -115,3 +115,8 @@ end
 if type -q starship
   starship init fish | source
 end
+
+# connect to a single named tmux session at all times
+if type -q tmux
+    alias tmux "tmux new-session -A -s main"
+end
