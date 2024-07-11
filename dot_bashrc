@@ -165,6 +165,12 @@ function tmux_bg(){
 
 eval "$(starship init bash)"
 
+# Initialise Atuin
+. "$HOME/.atuin/bin/env"
+
+[[ -f ~/.bash-preexec.sh ]] && source ~/.bash-preexec.sh
+eval "$(atuin init bash)"
+
 # Always have a tmux session active
 if [ -z "$TMUX" ] && [ ${UID} != 0 ]
 then
