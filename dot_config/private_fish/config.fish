@@ -1,3 +1,11 @@
+# # Base16 Shell: https://github.com/chriskempson/base16-shell
+# if status --is-interactive
+#     set BASE16_SHELL "$HOME/.config/base16-shell/"
+#     source "$BASE16_SHELL/profile_helper.fish"
+# end
+
+# base16-materia
+
 # Generic binaries
 if test -d "$HOME/bin/"
     set -gx fish_user_paths $HOME/bin/ $fish_user_paths
@@ -69,7 +77,6 @@ if status --is-interactive
     end
 end
 
-
 # Automatically install fisher
 if not functions -q fisher
     set -q XDG_CONFIG_HOME; or set XDG_CONFIG_HOME ~/.config
@@ -79,9 +86,9 @@ end
 
 # Greeting, runs on every shell
 function fish_greeting
-    if test -e "/usr/local/bin/task"
-        task next
-    end
+    #if test -e "/usr/local/bin/task"
+    #    task next
+    #end
 end
 
 # iTerm 2 integration
