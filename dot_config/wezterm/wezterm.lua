@@ -14,6 +14,11 @@ config.set_environment_variables = {
 local appearance = require 'appearance'
 appearance.apply_to_config(config)
 
+-- Left option is alt: opt+7 = |
+config.send_composed_key_when_left_alt_is_pressed = true
+config.send_composed_key_when_right_alt_is_pressed = false
+
+
 -- If you're using emacs you probably wanna choose a different leader here,
 -- since we're gonna be making it a bit harder to CTRL + A for jumping to
 -- the start of a line
