@@ -5,6 +5,8 @@
 local wezterm = require 'wezterm'
 -- Creates a config object which we will be adding our config to
 local config = wezterm.config_builder()
+local act = wezterm.action
+
 
 -- set path
 config.set_environment_variables = {
@@ -33,7 +35,8 @@ local function move_pane(key, direction)
 end
 
 config.keys = {
-    -- ... add these new entries to your config.keys table
+    -- Override normal tab opening behaviour
+    { key = 't', mods = 'SUPER', action = act({ SpawnCommandInNewTab = { cwd = wezterm.home_dir } }) },
     {
         -- I'm used to tmux bindings, so am using the quotes (") key to
         -- split horizontally, and the percent (%) key to split vertically.
@@ -50,6 +53,24 @@ config.keys = {
         mods = 'LEADER',
         action = wezterm.action.SplitVertical { domain = 'CurrentPaneDomain' },
     },
+    -- Create a new tab like tmux
+    {
+        key = 'c',
+        mods = 'LEADER',
+        action = act.SpawnTab 'CurrentPaneDomain',
+    },
+    -- Window prev/next movement like tmux
+    {
+        key = 'n',
+        mods = 'LEADER',
+        action = wezterm.action.ActivateTabRelative(1),
+    },
+    {
+        key = 'Backspace',
+        mods = 'LEADER',
+        action = wezterm.action.ActivateTabRelative(-1),
+    },
+    -- Feed C-a to the containing terminal
     {
         key = 'a',
         -- When we're in leader mode _and_ CTRL + A is pressed...

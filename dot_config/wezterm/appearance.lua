@@ -26,7 +26,7 @@ function module.apply_to_config(config)
         -- Berkeley Mono for me again, though an idea could be to try a
         -- serif font here instead of monospace for a nicer look?
         font = wezterm.font({ family = 'Fira Code', weight = 'Bold' }),
-        font_size = 15,
+        font_size = 14,
     }
 
     local function segments_for_right_status(window)
