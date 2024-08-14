@@ -65,12 +65,12 @@ end
 local function applyWorkAtHomeLayout()
     local workAtHomeLayout =
     {
-        { "Telegram",    nil, verticalScreen, hs.geometry.unitrect(0, 0, 1, 0.5),   nil, nil }, -- top half
-        { "Discord",     nil, verticalScreen, hs.geometry.unitrect(0, 0.5, 1, 0.5), nil, nil }, -- bottom half
-        { "Slack",       nil, mainDisplay,    hs.geometry.unitrect(0.5, 0, 0.5, 1), nil, nil }, -- right half
-        { "md.obsidian", nil, mainDisplay,    hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil }, -- left half
-        { "iTerm2",      nil, laptopScreen,   hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }, -- full screen
-        { "Music",       nil, laptopScreen,   hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }  -- full screen
+        { "Telegram",    nil, verticalScreen, hs.geometry.unitrect(0, 0, 1, 0.5),   nil, nil },  -- top half
+        { "Discord",     nil, verticalScreen, hs.geometry.unitrect(0, 0.5, 1, 0.5), nil, nil },  -- bottom half
+        { "Slack",       nil, mainDisplay,    hs.geometry.unitrect(0.5, 0, 0.5, 1), nil, nil },  -- right half
+        { "md.obsidian", nil, mainDisplay,    hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil },  -- left half
+        { "WezTerm",     nil, laptopScreen,   hs.geometry.unitrect(0, 0, 1, 1),     nil, nil },  -- full screen
+        { "Music",       nil, laptopScreen,   hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }   -- full screen
     }
 
     -- hs.fnutils.each(hs.application.runningApplications(), function(app) print(app:bundleID()) end)
@@ -79,7 +79,7 @@ local function applyWorkAtHomeLayout()
     hs.application.launchOrFocusByBundleID("md.obsidian")
     hs.application.launchOrFocusByBundleID("com.tinyspeck.slackmacgap")
     hs.application.launchOrFocusByBundleID("com.apple.Music")
-    hs.application.launchOrFocusByBundleID("com.googlecode.iterm2")
+    hs.application.launchOrFocusByBundleID("com.github.wez.wezterm")
 
     -- -> office to home -> unset fullscreen to make layout work
     unsetMainWindowFullscreen("ru.keepcoder.Telegram")
@@ -90,18 +90,18 @@ end
 
 local function applyWorkAtOfficeLayout()
     local workAtOfficeLayout = {
-        { "Telegram",    nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }, -- full screen
-        { "Discord",     nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }, -- full screen
-        { "Slack",       nil, workDisplay,  hs.geometry.unitrect(0.5, 0, 0.5, 1), nil, nil }, -- right half
-        { "md.obsidian", nil, workDisplay,  hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil }, -- left half
-        { "iTerm2",      nil, workDisplay,  hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil }, -- left half
-        { "Music",       nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }  -- full screen
+        { "Telegram",    nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil },  -- full screen
+        { "Discord",     nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil },  -- full screen
+        { "Slack",       nil, workDisplay,  hs.geometry.unitrect(0.5, 0, 0.5, 1), nil, nil },  -- right half
+        { "md.obsidian", nil, workDisplay,  hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil },  -- left half
+        { "WezTerm",     nil, workDisplay,  hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil },  -- left half
+        { "Music",       nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }   -- full screen
     }
 
     hs.application.launchOrFocusByBundleID("md.obsidian")
     hs.application.launchOrFocusByBundleID("com.tinyspeck.slackmacgap")
     hs.application.launchOrFocusByBundleID("com.apple.Music")
-    hs.application.launchOrFocusByBundleID("com.googlecode.iterm2")
+    hs.application.launchOrFocusByBundleID("com.github.wez.wezterm")
     hs.application.launchOrFocusByBundleID("ru.keepcoder.Telegram")
     hs.application.launchOrFocusByBundleID("com.hnc.Discord")
 
