@@ -37,6 +37,7 @@ end
 config.keys = {
     -- Override normal tab opening behaviour
     { key = 't', mods = 'SUPER', action = act({ SpawnCommandInNewTab = { cwd = wezterm.home_dir } }) },
+    { key = 'n', mods = 'SUPER', action = act({ SpawnCommandInNewWindow = { cwd = wezterm.home_dir } }) },
     {
         -- I'm used to tmux bindings, so am using the quotes (") key to
         -- split horizontally, and the percent (%) key to split vertically.
