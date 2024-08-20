@@ -92,7 +92,7 @@ function fish_greeting
 end
 
 # iTerm 2 integration
-test -e {$HOME}/.iterm2_shell_integration.fish ; and source {$HOME}/.iterm2_shell_integration.fish
+#test -e {$HOME}/.iterm2_shell_integration.fish ; and source {$HOME}/.iterm2_shell_integration.fish
 
 # GPG setup, it needs GPG_TTY set to do anything useful
 set -gx GPG_TTY (tty)
@@ -114,6 +114,8 @@ if type -q batcat
   alias cat batcat
 end
 
+# automatic env variables when entering directories
+# plus other stuff
 if type -q mise
     mise activate fish | source
 end
