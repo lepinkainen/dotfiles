@@ -36,11 +36,14 @@
     incoming = !git fetch && git log --stat ..origin/master
     lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
 [push]
-	default = current
+	default = simple
+    autoSetupRemove = true
+    followTags = true
 [stash]
 	showPatch = true
 [pull]
 	ff = only
+	rebase = true
 [filter "lfs"]
 	process = git-lfs filter-process
 	required = true
@@ -48,16 +51,26 @@
 	smudge = git-lfs smudge -- %f
 [column]
 	ui = auto
-[core]
-    autocrlf = input
 
-# Remove useless local branches when fetching
+[log]
+    date = iso
+
+[apply]
+    # Remove trailing whitespaces
+    whitespace = fix
+
+[help]
+    autocorrect = prompt
+
 [fetch]
-    prune = true
+    prune = true # Remove useless local branches when fetching
+    pruneTags = true
+    all = true
 
 # sign commits with SSH key stored in 1password
 [commit]
     gpgsign = true
+    verbose = true
 [gpg]
 	format = ssh
 [gpg "ssh"]
@@ -66,11 +79,25 @@
 # delta
 [core]
 	pager = delta
+    autocrlf = input
 [interactive]
     diffFilter = delta --color-only
 [delta]
     navigate = true    # use n and N to move between diff sections
 [merge]
-    conflictstyle = diff3
+    conflictstyle = zdiff3
+    
 [diff]
-    colorMoved = default
+    algorithm = histogram
+    colorMoved = plain
+    colorMovedWS = allow-indentation-change
+    renames = true
+
+[rerere]
+	enabled = true
+	autoupdate = true
+
+[rebase]
+	autoSquash = true
+	autoStash = true
+	updateRefs = true
