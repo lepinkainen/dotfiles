@@ -75,6 +75,11 @@ if status --is-interactive
     if type -q kubectl
         kubectl completion fish | source
     end
+    
+    # Initialize zoxide (better cd command) if available
+    if type -q zoxide
+        zoxide init fish | source
+    end
 end
 
 # Automatically install fisher
@@ -114,6 +119,22 @@ if type -q batcat
   alias cat batcat
 end
 
+# fd is a better find
+if type -q fd
+  alias find fd
+end
+
+# ripgrep is a better grep
+if type -q rg
+  alias grep rg
+end
+
+# btop is a better top
+if type -q btop
+  alias top btop
+  alias htop btop
+end
+
 # automatic env variables when entering directories
 # plus other stuff
 if type -q mise
@@ -128,4 +149,39 @@ end
 # connect to a single named tmux session at all times
 if type -q tmux
     alias tmux "tmux new-session -A -s main"
+end
+
+# Kubernetes shortcuts if kubectl is available
+if type -q kubectl
+  alias k kubectl
+end
+
+# Function to extract various archive formats
+function extract
+    switch $argv[1]
+        case '*.tar.bz2'
+            tar xjf $argv[1]
+        case '*.tar.gz'
+            tar xzf $argv[1]
+        case '*.bz2'
+            bunzip2 $argv[1]
+        case '*.rar'
+            unrar x $argv[1]
+        case '*.gz'
+            gunzip $argv[1]
+        case '*.tar'
+            tar xf $argv[1]
+        case '*.tbz2'
+            tar xjf $argv[1]
+        case '*.tgz'
+            tar xzf $argv[1]
+        case '*.zip'
+            unzip $argv[1]
+        case '*.Z'
+            uncompress $argv[1]
+        case '*.7z'
+            7z x $argv[1]
+        case '*'
+            echo "'$argv[1]' cannot be extracted via extract"
+    end
 end
