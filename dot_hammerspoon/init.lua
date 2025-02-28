@@ -1,62 +1,58 @@
-local hyper = { "cmd", "alt", "ctrl", "shift" }
+-- Load configuration
+local config = require("config")
+local hyper = config.hyper
 
+-- Load Spoons
 hs.loadSpoon("ReloadConfiguration")
 spoon.ReloadConfiguration:start()
 
+-- Enable Spotlight for application searches
 hs.application.enableSpotlightForNameSearches(true)
 
+-- Load modules
 require "rectangle"
 require "layouts"
 require "applications"
 require "urlstore"
+require "experimental"
+require "location" -- New location module
+
+-- Set up console behavior
+hs.console.darkMode(true)
+hs.console.consoleFont({ name = "Menlo", size = 12 })
 
 -- post url from clipboard to local downloader service
 hs.hotkey.bind(hyper, "k", PostURLtoWebService)
--- set layout based on location
+
+-- set layout based on location (manual trigger)
 hs.hotkey.bind(hyper, "l", function() ApplyLayout() end)
 
--- Experimental stuff
-local function arrangeTopTwoWindowsLeftRight()
-    -- Get the two topmost windows
-    local win1 = hs.window.orderedWindows()[1]
-    local win2 = hs.window.orderedWindows()[2]
+-- Show help overlay with available shortcuts
+hs.hotkey.bind(hyper, "/", function()
+    local helpText = [[
+Hammerspoon Shortcuts:
 
-    if win1 and win2 then
-        local screen = win1:screen() -- Assuming both windows are on the same screen
-        local max = screen:frame()
+Window Management (Alt+Ctrl):
+- Left/Right/Up/Down: Move window to half screen
+- U/I/J/K: Move window to quarter screen
+- F: Fullscreen window
+- C: Center window
 
-        -- Set window 1 to occupy the left half
-        win1:setFrame({ x = max.x, y = max.y, w = max.w / 2, h = max.h }, 0)
+Hyper Key (Cmd+Alt+Ctrl+Shift):
+- K: Post URL from clipboard to downloader
+- L: Apply layout manually
+- O: Launch Obsidian and open daily note
+- W: Show window hints
+- Tab: Switch between windows
+- 3: Arrange top two windows side by side
+- 4: Show 2x2 grid
+- 5: Show application chooser
+- U: Post multiple URLs from clipboard
+- /: Show this help
+    ]]
 
-        -- Set window 2 to occupy the right half
-        win2:setFrame({
-            x = max.x + max.w / 2,
-            y = max.y,
-            w = max.w / 2,
-            h = max.h
-        }, 0)
-    end
-end
-
-hs.hotkey.bind(hyper, "3", function() arrangeTopTwoWindowsLeftRight() end)
-
--- create a 2x2 grid with hs.grid
-hs.hotkey.bind(hyper, "4", function()
-    hs.grid.setGrid("2x2")
-    hs.grid.setMargins("0,0")
-    hs.grid.show()
+    hs.alert.show(helpText, 10)
 end)
 
--- activate chooser
-hs.hotkey.bind(hyper, "5", function()
-    local choices = {}
-    for _, app in ipairs(hs.application.runningApplications()) do
-        table.insert(choices, {
-            text = app:name(),
-            subText = app:bundleID(),
-            bundleID = app:bundleID()
-        })
-    end
-    chooser:choices(choices)
-    chooser:show()
-end)
+-- Alert that config is loaded
+hs.alert.show("Hammerspoon config loaded", 1)
