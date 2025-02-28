@@ -1,7 +1,5 @@
 tap "homebrew/bundle"
-tap "homebrew/cask"
 tap "homebrew/cask-fonts"
-tap "homebrew/core"
 
 # CLI Tools
 brew "ack"
@@ -11,7 +9,7 @@ brew "black"
 brew "btop"
 brew "direnv"
 brew "doctl"
-brew "exa"
+brew "eza"
 brew "fd"
 brew "fish"
 brew "fzf"
