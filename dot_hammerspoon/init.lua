@@ -40,14 +40,28 @@ Window Management (Alt+Ctrl):
 
 Hyper Key (Cmd+Alt+Ctrl+Shift):
 - K: Post URL from clipboard to downloader
+- U: Post multiple URLs from clipboard
 - L: Apply layout manually
+
+Application Shortcuts:
 - O: Launch Obsidian and open daily note
+- T: Launch Terminal
+- B: Launch Safari
+- C: Launch Visual Studio Code
+- E: Launch Mail
+- M: Launch Music
+- N: Launch Notes
+- G: Launch Telegram
+- D: Launch Discord
+- S: Launch Slack
+- Z: Launch WezTerm
+
+Window Management:
 - W: Show window hints
 - Tab: Switch between windows
 - 3: Arrange top two windows side by side
 - 4: Show 2x2 grid
 - 5: Show application chooser
-- U: Post multiple URLs from clipboard
 - /: Show this help
     ]]
 

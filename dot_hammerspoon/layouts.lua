@@ -1,13 +1,21 @@
-local hyper = { "cmd", "alt", "ctrl", "shift" }
+local config = require("config")
+local hyper = config.hyper
 
-local log = hs.logger.new('layouts', 'info')
+local log = hs.logger.new('layouts', config.debug.layouts and 'debug' or 'info')
 
--- list available displays
--- hs.fnutils.each(hs.screen.allScreens(), function(screen) print(screen) end)
-local laptopScreen = "Built-in Retina Display"
-local mainDisplay = "L32p-30"
-local verticalScreen = "LEN P27h-10"
-local workDisplay = "LEN P32p-20"
+-- Display references from config
+local laptopScreen = config.displays.laptopScreen
+local mainDisplay = config.displays.mainDisplay
+local verticalScreen = config.displays.verticalScreen
+local workDisplay = config.displays.workDisplay
+
+-- Helper function to launch applications by bundle ID
+local function launchApps(appList)
+    for _, bundleID in ipairs(appList) do
+        log.d("Launching app: " .. bundleID)
+        hs.application.launchOrFocusByBundleID(bundleID)
+    end
+end
 
 local function setMainWindowFullscreen(appName)
     local app = hs.application.get(appName)
@@ -53,11 +61,9 @@ local function applyHomeLayout()
         { "Discord",  nil, verticalScreen, hs.geometry.unitrect(0, 0.5, 1, 0.5), nil, nil }
     }
 
-    hs.application.launchOrFocusByBundleID("ru.keepcoder.Telegram")
-    hs.application.launchOrFocusByBundleID("com.hnc.Discord")
-    hs.application.launchOrFocusByBundleID("md.obsidian")
-    hs.application.launchOrFocusByBundleID("com.apple.Music")
-    hs.application.launchOrFocus("IRCCloud")
+    -- Launch common apps and home-specific apps
+    launchApps(config.layouts.apps.common)
+    launchApps(config.layouts.apps.home)
 
     hs.layout.apply(homeLayout)
 end
@@ -65,67 +71,70 @@ end
 local function applyWorkAtHomeLayout()
     local workAtHomeLayout =
     {
-        { "Telegram",    nil, verticalScreen, hs.geometry.unitrect(0, 0, 1, 0.5),   nil, nil },  -- top half
-        { "Discord",     nil, verticalScreen, hs.geometry.unitrect(0, 0.5, 1, 0.5), nil, nil },  -- bottom half
-        { "Slack",       nil, mainDisplay,    hs.geometry.unitrect(0.5, 0, 0.5, 1), nil, nil },  -- right half
-        { "md.obsidian", nil, mainDisplay,    hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil },  -- left half
-        { "WezTerm",     nil, laptopScreen,   hs.geometry.unitrect(0, 0, 1, 1),     nil, nil },  -- full screen
-        { "Music",       nil, laptopScreen,   hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }   -- full screen
+        { "Telegram",    nil, verticalScreen, hs.geometry.unitrect(0, 0, 1, 0.5),   nil, nil }, -- top half
+        { "Discord",     nil, verticalScreen, hs.geometry.unitrect(0, 0.5, 1, 0.5), nil, nil }, -- bottom half
+        { "Slack",       nil, mainDisplay,    hs.geometry.unitrect(0.5, 0, 0.5, 1), nil, nil }, -- right half
+        { "md.obsidian", nil, mainDisplay,    hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil }, -- left half
+        { "WezTerm",     nil, laptopScreen,   hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }, -- full screen
+        { "Music",       nil, laptopScreen,   hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }  -- full screen
     }
 
-    -- hs.fnutils.each(hs.application.runningApplications(), function(app) print(app:bundleID()) end)
-    hs.application.launchOrFocusByBundleID("ru.keepcoder.Telegram")
-    hs.application.launchOrFocusByBundleID("com.hnc.Discord")
-    hs.application.launchOrFocusByBundleID("md.obsidian")
-    hs.application.launchOrFocusByBundleID("com.tinyspeck.slackmacgap")
-    hs.application.launchOrFocusByBundleID("com.apple.Music")
-    hs.application.launchOrFocusByBundleID("com.github.wez.wezterm")
+    -- Launch common apps and work-specific apps
+    launchApps(config.layouts.apps.common)
+    launchApps(config.layouts.apps.work)
 
     -- -> office to home -> unset fullscreen to make layout work
-    unsetMainWindowFullscreen("ru.keepcoder.Telegram")
-    unsetMainWindowFullscreen("com.hnc.Discord")
+    unsetMainWindowFullscreen(config.apps.telegram.bundleID)
+    unsetMainWindowFullscreen(config.apps.discord.bundleID)
 
     hs.layout.apply(workAtHomeLayout)
 end
 
 local function applyWorkAtOfficeLayout()
     local workAtOfficeLayout = {
-        { "Telegram",    nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil },  -- full screen
-        { "Discord",     nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil },  -- full screen
-        { "Slack",       nil, workDisplay,  hs.geometry.unitrect(0.5, 0, 0.5, 1), nil, nil },  -- right half
-        { "md.obsidian", nil, workDisplay,  hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil },  -- left half
-        { "WezTerm",     nil, workDisplay,  hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil },  -- left half
-        { "Music",       nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }   -- full screen
+        { "Telegram",    nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }, -- full screen
+        { "Discord",     nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }, -- full screen
+        { "Slack",       nil, workDisplay,  hs.geometry.unitrect(0.5, 0, 0.5, 1), nil, nil }, -- right half
+        { "md.obsidian", nil, workDisplay,  hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil }, -- left half
+        { "WezTerm",     nil, workDisplay,  hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil }, -- left half
+        { "Music",       nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }  -- full screen
     }
 
-    hs.application.launchOrFocusByBundleID("md.obsidian")
-    hs.application.launchOrFocusByBundleID("com.tinyspeck.slackmacgap")
-    hs.application.launchOrFocusByBundleID("com.apple.Music")
-    hs.application.launchOrFocusByBundleID("com.github.wez.wezterm")
-    hs.application.launchOrFocusByBundleID("ru.keepcoder.Telegram")
-    hs.application.launchOrFocusByBundleID("com.hnc.Discord")
+    -- Launch common apps and work-specific apps
+    launchApps(config.layouts.apps.common)
+    launchApps(config.layouts.apps.work)
 
     hs.layout.apply(workAtOfficeLayout)
 
-    setMainWindowFullscreen("ru.keepcoder.Telegram")
-    setMainWindowFullscreen("com.hnc.Discord")
-    setMainWindowFullscreen("Music")
+    setMainWindowFullscreen(config.apps.telegram.bundleID)
+    setMainWindowFullscreen(config.apps.discord.bundleID)
+    setMainWindowFullscreen(config.apps.music.bundleID)
+end
+
+-- Default layout for when no specific layout applies
+local function applyDefaultLayout()
+    -- Simple layout that works on any machine
+    local defaultLayout = {
+        { "md.obsidian", nil, nil, hs.geometry.unitrect(0, 0, 0.7, 1),   nil, nil },
+        { "WezTerm",     nil, nil, hs.geometry.unitrect(0.7, 0, 0.3, 1), nil, nil }
+    }
+
+    -- Launch just the common apps
+    launchApps(config.layouts.apps.common)
+
+    hs.layout.apply(defaultLayout)
 end
 
 function ApplyLayout()
     local layoutName = nil
     local machineName = hs.host.names()[1]:lower()
 
-    if machineName:find("mimic") then
+    if machineName:find(config.networks.home.machine) then
         applyHomeLayout()
         layoutName = "Home"
     end
 
-    -- To enable wifi network detection:
-    -- type print(hs.location.get()) in the console
-    -- go to System Preferences -> Security & Privacy -> Privacy -> Location Services
-    -- check Hammerspoon
-    if machineName:find("mystique") then
+    if machineName:find(config.networks.work.machine) then
         log.i("work computer")
         -- Working with plain laptop, no displays connected
         if #hs.screen.allScreens() == 1 then
@@ -135,13 +144,13 @@ function ApplyLayout()
 
         -- Working with laptop and external display(s)
         -- At home
-        if hs.wifi.currentNetwork() == "Rocinante-5G" and layoutName == nil then
+        if hs.wifi.currentNetwork() == config.networks.home.ssids[1] and layoutName == nil then
             applyWorkAtHomeLayout()
             log.i("work mode - work at home")
             layoutName = "Work at home"
         end
         -- At the office
-        if hs.wifi.currentNetwork() == "Metacore" and layoutName == nil then
+        if hs.wifi.currentNetwork() == config.networks.work.ssids[1] and layoutName == nil then
             applyWorkAtOfficeLayout()
             log.i("work mode - work at office")
             layoutName = "Work at office"
@@ -152,7 +161,15 @@ function ApplyLayout()
     hs.notify.new({
         autoWithdraw = true,
         title = "Hammerspoon Layout",
-        informativeText = "Layout applied\n🧑🏼‍💻: " .. machineName .. "\n🪟: " .. layoutName,
+        informativeText = "Layout applied\n🧑🏼‍💻: " .. machineName .. "\n🪟: " .. (layoutName or "Unknown"),
         withdrawAfter = 5,
     }):send()
 end
+
+return {
+    applyHomeLayout = applyHomeLayout,
+    applyWorkAtHomeLayout = applyWorkAtHomeLayout,
+    applyWorkAtOfficeLayout = applyWorkAtOfficeLayout,
+    applyDefaultLayout = applyDefaultLayout,
+    ApplyLayout = ApplyLayout
+}

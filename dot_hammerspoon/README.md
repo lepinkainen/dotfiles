@@ -9,6 +9,7 @@ This is my personal Hammerspoon configuration for macOS automation and window ma
 - **URL Handling**: Send URLs from clipboard to a local download service
 - **Application Shortcuts**: Quick launch and control of applications
 - **Experimental Features**: Various experimental utilities
+- **Location Detection**: Automatically detect location based on WiFi and machine name
 
 ## Keyboard Shortcuts
 
@@ -23,11 +24,19 @@ This is my personal Hammerspoon configuration for macOS automation and window ma
 ### Hyper Key (Cmd+Alt+Ctrl+Shift)
 
 - K: Post URL from clipboard to local downloader service
+- U: Post multiple URLs from clipboard
 - L: Apply layout based on location
-- O: Launch Obsidian and open daily note
+- W: Show window hints
+- Tab: Switch between windows
 - 3: Arrange top two windows side by side
 - 4: Show 2x2 grid
 - 5: Show application chooser
+- /: Show help overlay
+
+### Application Shortcuts (Hyper + Key)
+
+- O: Launch Obsidian and open daily note
+- Z: Launch WezTerm
 
 ## Structure
 
@@ -38,7 +47,19 @@ This is my personal Hammerspoon configuration for macOS automation and window ma
 - `applications.lua`: Application-specific shortcuts
 - `urlstore.lua`: URL handling functionality
 - `experimental.lua`: Experimental features
+- `location.lua`: Location detection and automatic layout application
 - `Spoons/`: Hammerspoon extension modules
+
+## Configuration
+
+All configuration is centralized in `config.lua`, including:
+
+- Key modifiers
+- Display names
+- Network configurations
+- Application settings
+- Layout configurations
+- Debug settings
 
 ## Requirements
 
