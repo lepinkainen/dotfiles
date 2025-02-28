@@ -33,8 +33,13 @@ if sudo -n true 2>/dev/null; then
     
     # Install Fisher for Fish shell
     if [ -x "$(command -v fish)" ]; then
-        echo "Installing Fisher for Fish shell..."
-        fish -c "curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher"
+        echo "Checking for Fisher..."
+        if fish -c "functions -q fisher" 2>/dev/null; then
+            echo "Fisher already installed, skipping"
+        else
+            echo "Installing Fisher for Fish shell..."
+            fish -c "curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher"
+        fi
     fi
 else
     echo "no sudo permissions, skipping package install"
@@ -69,8 +74,13 @@ brew install --cask homebrew/cask-fonts/font-fira-mono-nerd-font homebrew/cask-f
 
 # Install Fisher for Fish shell
 if [ -x "$(command -v fish)" ]; then
-    echo "Installing Fisher for Fish shell..."
-    fish -c "curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher"
+    echo "Checking for Fisher..."
+    if fish -c "functions -q fisher" 2>/dev/null; then
+        echo "Fisher already installed, skipping"
+    else
+        echo "Installing Fisher for Fish shell..."
+        fish -c "curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher"
+    fi
 fi
 {{ else if eq .chezmoi.os "windows" -}}
 echo "Windows not supported"
