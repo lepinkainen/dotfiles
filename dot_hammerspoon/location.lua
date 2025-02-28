@@ -77,18 +77,24 @@ local function applyLayoutForLocation()
     end
 end
 
--- Watch for WiFi network changes
-local wifiWatcher = wifi.watcher.new(applyLayoutForLocation)
-wifiWatcher:start()
+-- Watch for WiFi network changes - DISABLED for manual control only
+-- local wifiWatcher = wifi.watcher.new(applyLayoutForLocation)
+-- wifiWatcher:start()
 
--- Also check periodically (for when returning from sleep)
-local locationTimer = timer.new(300, applyLayoutForLocation)
-locationTimer:start()
+-- Also check periodically (for when returning from sleep) - DISABLED for manual control only
+-- local locationTimer = timer.new(300, applyLayoutForLocation)
+-- locationTimer:start()
 
--- Initial check
-applyLayoutForLocation()
+-- Initial check - DISABLED for manual control only
+-- applyLayoutForLocation()
+
+-- Manual layout application function (to be called by hyper-L)
+local function manualApplyLayout()
+    applyLayoutForLocation()
+end
 
 return {
     detectLocation = detectLocation,
-    applyLayoutForLocation = applyLayoutForLocation
+    applyLayoutForLocation = applyLayoutForLocation,
+    manualApplyLayout = manualApplyLayout
 }

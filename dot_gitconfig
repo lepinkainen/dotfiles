@@ -86,6 +86,7 @@
     navigate = true    # use n and N to move between diff sections
 [merge]
     conflictstyle = zdiff3
+    autoStash = true
     
 [diff]
     algorithm = histogram
@@ -101,3 +102,5 @@
 	autoSquash = true
 	autoStash = true
 	updateRefs = true
+[init]
+	defaultBranch = main
