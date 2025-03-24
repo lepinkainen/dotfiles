@@ -20,6 +20,10 @@ config.networks = {
         ssids = { "Rocinante-5G" },
         machine = "mimic"
     },
+    work_at_home = {
+        ssids = { "Rocinante-5G" },
+        machine = "mystique"
+    },
     work = {
         ssids = { "Metacore" },
         machine = "mystique"

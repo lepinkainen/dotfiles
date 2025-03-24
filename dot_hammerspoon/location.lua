@@ -17,26 +17,29 @@ local function detectLocation()
     log.i("Current WiFi SSID: " .. (currentSSID or "None"))
     log.i("Machine name: " .. machineName)
 
-    -- Check if we're at home
-    if machineName:find(config.networks.home.machine) or
-        (currentSSID and hs.fnutils.contains(config.networks.home.ssids, currentSSID)) then
+    -- Check if we're at home, just check the machine name
+    if machineName:find(config.networks.home.machine) then
+        log.i("home mode")
         return "home"
     end
 
-    -- Check if we're at work
+    -- Check if we're using a work computer
     if machineName:find(config.networks.work.machine) then
-        -- At work with laptop only
+        -- work with laptop only
         if #hs.screen.allScreens() == 1 then
+            log.i("work mode - one display")
             return "work_laptop_only"
         end
 
         -- At work with external display
         if currentSSID and hs.fnutils.contains(config.networks.work.ssids, currentSSID) then
+            log.i("work mode - work at office")
             return "work_office"
         end
 
         -- At home with work laptop
         if currentSSID and hs.fnutils.contains(config.networks.home.ssids, currentSSID) then
+            log.i("work mode - work at home")
             return "work_at_home"
         end
     end
@@ -62,6 +65,7 @@ local function applyLayoutForLocation()
         elseif location == "work_office" then
             layouts.applyWorkAtOfficeLayout()
         elseif location == "work_laptop_only" then
+            layouts.applyDefaultLayout()
             -- You could add a new layout function for this case
             log.i("No specific layout for work laptop only")
         else
@@ -71,7 +75,7 @@ local function applyLayoutForLocation()
         -- Show notification
         hs.notify.new({
             title = "Hammerspoon",
-            informativeText = "Applied " .. location .. " layout",
+            informativeText = "Applied " .. location:gsub("_", " ") .. " layout",
             withdrawAfter = 3
         }):send()
     end
