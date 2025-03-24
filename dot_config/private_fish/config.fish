@@ -135,6 +135,11 @@ if type -q btop
   alias htop btop
 end
 
+# dust is a better du
+if type -q dust
+  alias du dust
+end
+
 # automatic env variables when entering directories
 # plus other stuff
 if type -q mise
