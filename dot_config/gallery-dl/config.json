@@ -3,7 +3,8 @@
         "instagram": {
             "filename": "{username}_{post_date:%Y%m%d}_{sidecar_media_id:?/_/}{media_id}.{extension}",
             "directory": ["{category}","{username}"],
-            "cookies": ["firefox"]
+            "skip": "abort:24",
+            "cookies": ["firefox", null, null, null, "instagram.com"]
         }
     },
     "downloader": {
