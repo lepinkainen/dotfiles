@@ -1,0 +1,18 @@
+{
+    "extractor": {
+        "instagram": {
+            "filename": "{username}_{post_date:%Y%m%d}_{sidecar_media_id:?/_/}{media_id}.{extension}",
+            "directory": ["{category}","{username}"],
+            "cookies": ["firefox"]
+        }
+    },
+    "downloader": {
+
+    },
+    "output": {
+
+    },
+    "postprocessor": {
+
+    }
+}
