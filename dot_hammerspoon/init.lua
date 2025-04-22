@@ -15,6 +15,7 @@ require "layouts"
 require "applications"
 require "urlstore"
 require "experimental"
+require "display_brightness"
 local location = require "location" -- New location module
 
 -- Set up console behavior

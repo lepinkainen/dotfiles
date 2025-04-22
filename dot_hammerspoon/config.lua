@@ -95,7 +95,8 @@ config.debug = {
     urlstore = true,
     applications = false,
     experimental = false,
-    location = true
+    location = true,
+    brightness = false
 }
 
 return config
