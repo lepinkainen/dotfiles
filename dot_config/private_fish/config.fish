@@ -135,15 +135,15 @@ if type -q btop
   alias htop btop
 end
 
-# dust is a better du
-if type -q dust
-  alias du dust
-end
-
 # automatic env variables when entering directories
 # plus other stuff
 if type -q mise
     mise activate fish | source
+end
+
+# direnv things
+if type -q direnv
+    direnv hook fish | source
 end
 
 # Use starship prompt if installed
@@ -190,3 +190,12 @@ function extract
             echo "'$argv[1]' cannot be extracted via extract"
     end
 end
+
+# Source local.fish if it exists
+if test -f (dirname (status -f))/local.fish
+    source (dirname (status -f))/local.fish
+end
+# Added by LM Studio CLI (lms)
+set -gx PATH $PATH /Users/riku.lindblad/.cache/lm-studio/bin
+# End of LM Studio CLI section
+

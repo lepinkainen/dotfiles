@@ -104,3 +104,6 @@
 	updateRefs = true
 [init]
 	defaultBranch = main
+[user]
+	name = Riku Lindblad
+	email = riku.lindblad@metacoregames.com
