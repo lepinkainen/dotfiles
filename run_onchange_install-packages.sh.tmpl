@@ -30,17 +30,6 @@ if sudo -n true 2>/dev/null; then
     else
         echo "Mise already installed, skipping"
     fi
-    
-    # Install Fisher for Fish shell
-    if [ -x "$(command -v fish)" ]; then
-        echo "Checking for Fisher..."
-        if fish -c "functions -q fisher" 2>/dev/null; then
-            echo "Fisher already installed, skipping"
-        else
-            echo "Installing Fisher for Fish shell..."
-            fish -c "curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher"
-        fi
-    fi
 else
     echo "no sudo permissions, skipping package install"
 fi
@@ -59,10 +48,6 @@ fi
 echo "Installing packages from Brewfile..."
 brew bundle
 
-# Install additional CLI tools
-echo "Installing additional CLI tools..."
-brew install starship tmux ack eza bat fish httpie wget rsync pinentry-mac btop atuin mise git-delta fd wezterm ripgrep zoxide direnv dust
-
 # Install terminal and window management tools
 echo "Installing terminal and window management tools..."
 brew install --cask hammerspoon
@@ -70,18 +55,7 @@ brew install --cask karabiner-elements
 
 # Install fonts
 echo "Installing fonts..."
-brew install --cask homebrew/cask-fonts/font-fira-mono-nerd-font homebrew/cask-fonts/font-fira-code-nerd-font
-
-# Install Fisher for Fish shell
-if [ -x "$(command -v fish)" ]; then
-    echo "Checking for Fisher..."
-    if fish -c "functions -q fisher" 2>/dev/null; then
-        echo "Fisher already installed, skipping"
-    else
-        echo "Installing Fisher for Fish shell..."
-        fish -c "curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher"
-    fi
-fi
+brew install font-fira-mono-nerd-font font-fira-code-nerd-font font-fira-code font-fira-mono
 {{ else if eq .chezmoi.os "windows" -}}
 echo "Windows not supported"
 {{ else -}}
