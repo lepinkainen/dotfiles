@@ -4,7 +4,9 @@ local module = {}
 
 function module.apply_to_config(config)
     --config.color_scheme = 'Default Dark (base16)'
-    config.color_scheme = 'Dark Pastel'
+    --config.color_scheme = 'Dark Pastel'
+    -- https://github.com/kepano/flexoki
+    config.color_scheme = 'Flexoki Dark'
 
     -- Choose your favourite font, make sure it's installed on your machine
     config.font = wezterm.font 'Fira Code'
