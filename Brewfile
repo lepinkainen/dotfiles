@@ -1,5 +1,4 @@
 tap "homebrew/bundle"
-tap "homebrew/cask-fonts"
 
 # CLI Tools
 brew "ack"
@@ -39,7 +38,6 @@ brew "starship"
 brew "terraform"
 brew "tmux"
 brew "watch"
-brew "wezterm"
 brew "watchman"
 brew "wget"
 brew "yarn"
@@ -60,7 +58,7 @@ cask "rectangle"
 cask "spotify"
 cask "telegram-desktop"
 cask "transmit"
-#cask "wezterm"
+cask "wezterm"
 #cask "google-chrome"
 
 #mas "Parcel", id: 639968404
