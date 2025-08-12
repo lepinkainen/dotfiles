@@ -2,6 +2,24 @@ local wezterm = require 'wezterm'
 
 local module = {}
 
+local function get_git_branch()
+    local handle = io.popen("git branch --show-current 2>/dev/null")
+    if not handle then
+        return nil
+    end
+
+    local branch = handle:read("*a")
+    handle:close()
+
+    if not branch or branch == "" then
+        return nil
+    end
+
+    branch = branch:gsub("\n", "")
+    return "󰊢 " .. branch
+end
+
+
 function module.apply_to_config(config)
     --config.color_scheme = 'Default Dark (base16)'
     --config.color_scheme = 'Dark Pastel'
@@ -32,11 +50,33 @@ function module.apply_to_config(config)
     }
 
     local function segments_for_right_status(window)
-        return {
-            window:active_workspace(),
-            wezterm.strftime('%a %b %-d %H:%M'),
-            wezterm.hostname(),
-        }
+        local domain_name = window:active_pane():get_domain_name()
+        local workspace = window:active_workspace()
+        local segments = {}
+
+        -- Only add workspace if it's not "default"
+        if workspace ~= "default" then
+            table.insert(segments, workspace)
+        end
+
+        -- Git branch (if available)
+        local git_branch = get_git_branch()
+        if git_branch then
+            table.insert(segments, git_branch)
+        end
+
+
+        local cwd = window:active_pane():get_current_working_dir()
+        if cwd then
+            local basename = cwd.file_path:match("([^/]+)/?$")
+            table.insert(segments, "📁 " .. (basename or "~"))
+        end
+
+
+        table.insert(segments, wezterm.strftime('%a %Y-%m-%d %H:%M'))
+        table.insert(segments, domain_name)
+
+        return segments
     end
 
     wezterm.on('update-status', function(window, _)

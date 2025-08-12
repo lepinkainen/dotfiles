@@ -86,5 +86,14 @@ config.keys = {
 
 }
 
+config.ssh_domains = {
+    {
+        name = 'endymion',
+        remote_address = 'endymion',
+        username = 'shrike',
+    },
+}
+
+
 -- Returns our config to be evaluated. We must always do this at the bottom of this file
 return config
