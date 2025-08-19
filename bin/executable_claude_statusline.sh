@@ -67,14 +67,26 @@ if command -v pmset >/dev/null 2>&1; then
     fi
 fi
 
-# Claude usage status from ccusage
+# Claude usage status from ccusage with formatting improvements
 CCUSAGE=""
 if command -v bun >/dev/null 2>&1; then
-    CCUSAGE_OUTPUT=$(echo "$input" | bun x ccusage statusline 2>/dev/null)
-    if [ -n "$CCUSAGE_OUTPUT" ]; then
-        CCUSAGE=" | $CCUSAGE_OUTPUT"
+    CCUSAGE_RAW=$(echo "$input" | bun x ccusage statusline 2>/dev/null)
+    if [ -n "$CCUSAGE_RAW" ]; then
+        # Apply formatting improvements to ccusage output
+        CCUSAGE_FORMATTED=$(echo "$CCUSAGE_RAW" | sed -E '
+            # Remove model information completely
+            s/🤖 [^|]+ \| //g
+            # Compress cost format: "$X session / $Y today" -> "$X/$Y"
+            s/\$([0-9.]+) session \/ \$([0-9.]+) today/\$\1\/\$\2/g
+            # Shorten time format: "4h 29m left" -> "4h29m"
+            s/([0-9]+)h ([0-9]+)m left/\1h\2m/g
+            # Remove redundant text
+            s/ block \(/ (/g
+        ')
+        
+        CCUSAGE=" | $CCUSAGE_FORMATTED"
     fi
 fi
 
 # Combine all parts (inspired by your Starship format)
-printf "user: %s %s📁 %s%s%s%s" "$USERNAME" "$HOSTNAME_PART" "$DIR_NAME" "$GIT_INFO" "$BATTERY" "$CCUSAGE"
+printf "%s📁 %s%s%s%s" "$HOSTNAME_PART" "$DIR_NAME" "$GIT_INFO" "$BATTERY" "$CCUSAGE"
