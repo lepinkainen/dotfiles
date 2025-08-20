@@ -191,11 +191,37 @@ function extract
     end
 end
 
+function load_1password_secrets
+    # Check if op is installed and user is signed in
+    if not command -q op
+        return 1
+    end
+    
+    # Check if we're signed in (this command will fail if not)
+    if not op vault list &>/dev/null
+        echo "Please unlock 1Password app first" >&2
+        return 1
+    end
+    
+    # Load API keys from 1Password
+    set -gx OPENAI_API_KEY (op read "op://Development/OpenAI API/credential" 2>/dev/null)
+    set -gx ANTHROPIC_API_KEY (op read "op://Development/Anthropic API/credential" 2>/dev/null)
+
+    test -n "$OPENAI_API_KEY" && echo "✓ OpenAI API key loaded" >&2
+    test -n "$ANTHROPIC_API_KEY" && echo "✓ Anthropic API key loaded" >&2
+end
+
+# Load secrets on shell startup
+#load_1password_secrets
+
 # Source local.fish if it exists
 if test -f (dirname (status -f))/local.fish
     source (dirname (status -f))/local.fish
 end
+
 # Added by LM Studio CLI (lms)
 set -gx PATH $PATH /Users/riku.lindblad/.cache/lm-studio/bin
 # End of LM Studio CLI section
 
+# 1password plugin system
+source /Users/shrike/.config/op/plugins.sh

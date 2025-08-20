@@ -10,7 +10,8 @@ local act = wezterm.action
 
 -- set path
 config.set_environment_variables = {
-    PATH = '/opt/homebrew/bin:' .. os.getenv('PATH')
+    PATH = '/opt/homebrew/bin:' .. os.getenv('PATH'),
+    OP_SESSION_my = os.getenv("OP_SESSION_my"),
 }
 
 local appearance = require 'appearance'
