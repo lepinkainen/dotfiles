@@ -235,4 +235,6 @@ set -gx PATH $PATH /Users/riku.lindblad/.cache/lm-studio/bin
 # End of LM Studio CLI section
 
 # 1password plugin system
-source /Users/shrike/.config/op/plugins.sh
+if test -f /Users/shrike/.config/op/plugins.sh
+    source /Users/shrike/.config/op/plugins.sh
+end
