@@ -10,8 +10,7 @@ local act = wezterm.action
 
 -- set path
 config.set_environment_variables = {
-    PATH = '/opt/homebrew/bin:' .. os.getenv('PATH'),
-    OP_SESSION_my = os.getenv("OP_SESSION_my"),
+    PATH = '/opt/homebrew/bin:' .. os.getenv('PATH')
 }
 
 local appearance = require 'appearance'
@@ -39,6 +38,9 @@ config.keys = {
     -- Override normal tab opening behaviour
     { key = 't', mods = 'SUPER', action = act({ SpawnCommandInNewTab = { cwd = wezterm.home_dir } }) },
     { key = 'n', mods = 'SUPER', action = act({ SpawnCommandInNewWindow = { cwd = wezterm.home_dir } }) },
+    -- Font size: increase with Cmd+= and Cmd+Shift+= (Cmd++)
+    { key = '=', mods = 'SUPER', action = act.IncreaseFontSize },
+    { key = '=', mods = 'SUPER|SHIFT', action = act.IncreaseFontSize },
     {
         -- I'm used to tmux bindings, so am using the quotes (") key to
         -- split horizontally, and the percent (%) key to split vertically.
@@ -90,7 +92,7 @@ config.keys = {
 config.ssh_domains = {
     {
         name = 'endymion',
-        remote_address = 'endymion',
+        remote_address = 'endymion.xyz',
         username = 'shrike',
     },
 }
