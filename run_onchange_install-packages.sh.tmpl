@@ -1,14 +1,11 @@
 {{ if eq .chezmoi.os "linux" -}}
 #!/bin/sh
-if sudo -n true 2>/dev/null; then 
-    echo "sudo permissions detected, installing packages"
-    
-    # Install essential tools
-    sudo apt update
-    sudo apt install -y tmux atuin starship ack eza bat direnv fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide neovim
-else
-    echo "no sudo permissions, skipping package install"
-fi
+echo "Installing packages (may prompt for sudo password)..."
+
+# Install essential tools
+sudo apt update
+sudo apt install -y tmux atuin starship ack eza bat direnv fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide neovim
+
 {{ else if eq .chezmoi.os "darwin" -}}
 #!/bin/sh
 # Install Homebrew if not already installed
