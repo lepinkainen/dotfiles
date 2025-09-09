@@ -5,23 +5,7 @@ if sudo -n true 2>/dev/null; then
     
     # Install essential tools
     sudo apt update
-    sudo apt install -y tmux ack eza bat direnv fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide neovim
-
-    # Check for Starship
-    if [ ! -x "$(command -v starship)" ]; then
-        echo "Installing Starship..."
-        curl -sS https://starship.rs/install.sh | sh
-    else
-        echo "Starship already installed, skipping"
-    fi
-
-    # Check for Atuin
-    if [ ! -x "$(command -v atuin)" ]; then
-        echo "Installing Atuin..."
-        curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
-    else
-        echo "Atuin already installed, skipping"
-    fi
+    sudo apt install -y tmux atuin starship ack eza bat direnv fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide neovim
 else
     echo "no sudo permissions, skipping package install"
 fi
