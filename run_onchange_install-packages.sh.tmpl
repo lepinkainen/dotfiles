@@ -5,7 +5,7 @@ if sudo -n true 2>/dev/null; then
     
     # Install essential tools
     sudo apt update
-    sudo apt install -y tmux ack exa bat fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide
+    sudo apt install -y tmux ack eza bat fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide neovim
 
     # Check for Starship
     if [ ! -x "$(command -v starship)" ]; then
