@@ -1,10 +1,28 @@
 {{ if eq .chezmoi.os "linux" -}}
+{{- $osid := .chezmoi.os -}}
+{{- if hasKey .chezmoi.osRelease "id" -}}
+{{-   $osid = printf "%s-%s" .chezmoi.os .chezmoi.osRelease.id -}}
+{{- end -}}
+{{- $base_packages := "tmux atuin starship ack eza bat direnv fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide neovim" -}}
+{{- $arch_packages := replace (replace $base_packages "fd-find" "fd") "pinentry-tty" "pinentry" -}}
 #!/bin/sh
 echo "Installing packages (may prompt for sudo password)..."
 
-# Install essential tools
+{{ if eq $osid "linux-debian" -}}
+# Debian
 sudo apt update
-sudo apt install -y tmux atuin starship ack eza bat direnv fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide neovim
+sudo apt install -y {{ $base_packages }}
+{{ else if eq $osid "linux-ubuntu" -}}
+# Ubuntu
+sudo apt update
+sudo apt install -y {{ $base_packages }}
+{{ else if eq $osid "linux-arch" -}}
+# Arch Linux
+sudo pacman -Syu --noconfirm {{ $arch_packages }}
+{{ else -}}
+echo "Unsupported Linux distribution: {{ $osid }}"
+echo "Please install the following packages manually: {{ $base_packages }}"
+{{ end -}}
 
 {{ else if eq .chezmoi.os "darwin" -}}
 #!/bin/sh
