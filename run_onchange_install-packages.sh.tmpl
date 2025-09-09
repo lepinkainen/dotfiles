@@ -5,7 +5,7 @@ if sudo -n true 2>/dev/null; then
     
     # Install essential tools
     sudo apt update
-    sudo apt install -y tmux ack eza bat fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide neovim
+    sudo apt install -y tmux ack eza bat direnv fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide neovim
 
     # Check for Starship
     if [ ! -x "$(command -v starship)" ]; then
@@ -21,14 +21,6 @@ if sudo -n true 2>/dev/null; then
         curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
     else
         echo "Atuin already installed, skipping"
-    fi
-    
-    # Check for Mise
-    if [ ! -x "$(command -v mise)" ]; then
-        echo "Installing Mise..."
-        curl https://mise.run | sh
-    else
-        echo "Mise already installed, skipping"
     fi
 else
     echo "no sudo permissions, skipping package install"
