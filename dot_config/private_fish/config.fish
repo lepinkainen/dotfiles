@@ -238,3 +238,9 @@ set -gx PATH $PATH /Users/riku.lindblad/.cache/lm-studio/bin
 if test -f /Users/shrike/.config/op/plugins.sh
     source /Users/shrike/.config/op/plugins.sh
 end
+
+# Use 1password ssh agent if it exists
+if test -S ~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock
+    set -x SSH_AUTH_SOCK ~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock
+end
+
