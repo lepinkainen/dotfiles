@@ -53,12 +53,34 @@ brew bundle
 
 # Install terminal and window management tools
 echo "Installing terminal and window management tools..."
-brew install --cask hammerspoon
-brew install --cask karabiner-elements
+if [ -d "/Applications/Hammerspoon.app" ]; then
+    echo "Hammerspoon already installed, skipping..."
+elif brew list --cask hammerspoon &> /dev/null; then
+    echo "Hammerspoon already installed via Homebrew, skipping..."
+else
+    echo "Installing Hammerspoon..."
+    brew install --cask hammerspoon
+fi
+
+if [ -d "/Applications/Karabiner-Elements.app" ]; then
+    echo "Karabiner-Elements already installed, skipping..."
+elif brew list --cask karabiner-elements &> /dev/null; then
+    echo "Karabiner-Elements already installed via Homebrew, skipping..."
+else
+    echo "Installing Karabiner-Elements..."
+    brew install --cask karabiner-elements
+fi
 
 # Install fonts
 echo "Installing fonts..."
-brew install font-fira-mono-nerd-font font-fira-code-nerd-font font-fira-code font-fira-mono
+for font in font-fira-mono-nerd-font font-fira-code-nerd-font font-fira-code font-fira-mono; do
+    if ! brew list --cask "$font" &> /dev/null; then
+        echo "Installing $font..."
+        brew install "$font"
+    else
+        echo "$font already installed, skipping..."
+    fi
+done
 
 {{ else if eq .chezmoi.os "windows" -}}
 #!/bin/sh
