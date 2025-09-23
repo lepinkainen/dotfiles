@@ -11,6 +11,9 @@ ssh_only = true
 truncation_length = 8
 truncation_symbol = '…/'
 
+[aws]
+disabled = true
+
 [git_status]
 disabled = false
 ahead = '⇡${count}'
