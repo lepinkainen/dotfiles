@@ -3,7 +3,7 @@
 {{- if hasKey .chezmoi.osRelease "id" -}}
 {{-   $osid = printf "%s-%s" .chezmoi.os .chezmoi.osRelease.id -}}
 {{- end -}}
-{{- $base_packages := "tmux atuin starship ack eza bat direnv fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide neovim" -}}
+{{- $base_packages := "tmux atuin starship ack eza bat direnv fastfetch fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide neovim" -}}
 {{- $arch_packages := replace (replace $base_packages "fd-find" "fd") "pinentry-tty" "pinentry" -}}
 #!/bin/sh
 set -e
