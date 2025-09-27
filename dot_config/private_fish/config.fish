@@ -61,9 +61,12 @@ function on_exit --on-process %self
     echo fish is now exiting
 end
 
-# Run for login shells
-if status --is-login
+# Run for SSH login shells
+if status --is-login; and set -q SSH_CONNECTION
     uptime
+    if type -q fastfetch
+        fastfetch
+    end
 end
 
 if status --is-interactive
@@ -243,4 +246,3 @@ end
 if test -S ~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock
     set -x SSH_AUTH_SOCK ~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock
 end
-
