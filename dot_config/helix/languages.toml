@@ -1,0 +1,34 @@
+# --- TOML ---
+[[language]]
+name = "toml"
+auto-format = true
+formatter = { command = "taplo", args = ["fmt", "-"] }
+
+# --- Go ---
+[language-server.golangci]
+command = "golangci-lint-langserver"
+args = ["-g", "999s"]  # cache diagnostics a bit; tweak as you like
+
+[language-server.gopls]
+command = "gopls"
+
+[language-server.gopls.config]
+gofumpt = true
+staticcheck = true
+
+[[language]]
+name = "go"
+language-servers = ["gopls", "golangci"]
+auto-format = true
+formatter = { command = "gofumpt" }
+
+# --- C# via csharp-ls (.NET 8) ---
+[language-server.csharp-ls]
+command = "csharp-ls"
+
+[[language]]
+name = "c-sharp"
+language-servers = ["csharp-ls"]
+auto-format = true
+formatter = { command = "csharpier", args = ["--write-stdout"] }
+

@@ -1,1 +1,5 @@
 theme = "flexoki_dark"
+
+[editor]
+line-number = "relative"
+auto-format = true
