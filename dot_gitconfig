@@ -74,7 +74,7 @@
 [gpg]
 	format = ssh
 [gpg "ssh"]
-	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+    defaultKeyCommand = "/usr/bin/ssh-add -L" # get key from ssh-agen
 
 # delta
 [core]
