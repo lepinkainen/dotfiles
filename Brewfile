@@ -1,5 +1,3 @@
-tap "homebrew/bundle"
-
 # CLI Tools
 brew "ack"
 brew "atuin"
