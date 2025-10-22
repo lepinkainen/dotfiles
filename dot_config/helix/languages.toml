@@ -8,6 +8,11 @@ name = "go"
 language-servers = ["gopls", "golangci"]
 formatter = { command = "gofumpt" }
 
+[[language]]
+name = "python"
+formatter = { command = "ruff format"
+auto-format = true
+
 # --- C# via csharp-ls (.NET 8) ---
 [[language]]
 name = "c-sharp"
