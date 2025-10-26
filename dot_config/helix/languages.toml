@@ -10,7 +10,8 @@ formatter = { command = "gofumpt" }
 
 [[language]]
 name = "python"
-formatter = { command = "ruff format"
+formatter = { command = "ruff format" }
+
 auto-format = true
 
 # --- C# via csharp-ls (.NET 8) ---
