@@ -8,6 +8,7 @@
 # # The config file consists of simple key-value pairs
 # # separated by equals signs
 font-family = Fira Code
+font-size = 13
 # window-padding-x = 2
 #
 # # Spacing around the equals sign does not matter
@@ -20,7 +21,8 @@ font-family = Fira Code
 # Any line beginning with a # is a comment. It's not possible to put
 # a comment after a config option, since it would be interpreted as a
 # part of the value. For example, this will have a value of "#123abc"
-background = #282c34
+background = #100F0F
+foreground = #CECDC3
 #
 # # Empty values are used to reset config keys to default
 # key =
@@ -30,3 +32,41 @@ background = #282c34
 # # Just for example
 # resize-overlay-duration = 4s 200ms
 theme = Flexoki Dark
+
+# Font options - enable ligatures for Fira Code
+font-feature = +calt,+liga
+
+# Better font rendering on macOS
+font-thicken = true
+
+# Window decoration
+window-decoration = true
+macos-titlebar-style = tabs
+
+# Window padding for breathing room
+window-padding-x = 4
+window-padding-y = 4
+
+# Shell integration enables features like jump-to-prompt, command completion markers
+shell-integration = detect
+
+# Clipboard settings
+clipboard-read = allow
+clipboard-write = allow
+copy-on-select = true
+clipboard-trim-trailing-spaces = true
+
+# Productivity settings
+scrollback-limit = 100000
+mouse-hide-while-typing = true
+confirm-close-surface = true
+auto-update = check
+window-step-resize = true
+
+# Visual effects
+unfocused-split-opacity = 0.8
+background-blur-radius = 20
+background-opacity = 0.95
+resize-overlay = always
+resize-overlay-duration = 1s
+
