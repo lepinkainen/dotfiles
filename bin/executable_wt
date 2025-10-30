@@ -1,0 +1,337 @@
+#!/usr/bin/env bash
+# wt v2 – pretty git worktree helper (gum-powered)
+# Interactive creator/remover with safe quoting, validation, and optional dry-run.
+
+set -euo pipefail
+
+die() { echo "Error: $*" >&2; exit 1; }
+need() { command -v "$1" >/dev/null 2>&1 || die "Missing dependency: $1"; }
+note() { echo "$*" >&2; }
+
+# ---- Dependencies & repo checks ------------------------------------------------
+
+need git
+need gum
+
+git rev-parse --git-dir >/dev/null 2>&1 || die "Not a git repository."
+test "$(git rev-parse --is-bare-repository)" = "false" || die "Bare repo not supported."
+
+# ---- Config handling -----------------------------------------------------------
+
+WT_CONFIG_DEFAULT="${WT_CONFIG:-$HOME/.config/wt/config}"
+if [ -f "$WT_CONFIG_DEFAULT" ]; then
+  # shellcheck source=/dev/null
+  . "$WT_CONFIG_DEFAULT"
+fi
+
+# Defaults (can be overridden by env or config file above)
+: "${WT_ROOT:=..}"                       # default sibling folder for new worktrees
+: "${WT_GUESS_REMOTE:=true}"
+: "${DRY_RUN:=0}"
+
+# Resolve default base to origin/HEAD if available, else origin/main
+resolve_default_base() {
+  local head
+  head="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+  if [ -n "$head" ]; then
+    echo "$head"
+  elif git rev-parse --verify --quiet origin/main >/dev/null; then
+    echo "origin/main"
+  else
+    echo "HEAD"
+  fi
+}
+
+: "${WT_DEFAULT_BASE:=$(resolve_default_base)}"
+
+if [ "${WT_GUESS_REMOTE}" = "true" ]; then
+  git config worktree.guessRemote true >/dev/null 2>&1 || true
+fi
+
+# ---- Utilities ----------------------------------------------------------------
+
+# DRY-RUN wrapper
+run() {
+  if [ "${DRY_RUN}" = "1" ]; then
+    printf "[dry-run]"; for a in "$@"; do printf " %q" "$a"; done; printf "\n"
+  else
+    "$@"
+  fi
+}
+
+# Traps: graceful interrupt
+trap 'echo; echo "Interrupted."; exit 130' INT TERM
+
+abs_path() {
+  # Resolve absolute path without requiring GNU realpath
+  python3 - "$1" <<'PY' 2>/dev/null || perl -MCwd=abs_path -e 'print abs_path(shift),"\n"' "$1" 2>/dev/null || printf "%s\n" "$1"
+import os,sys; print(os.path.abspath(sys.argv[1]))
+PY
+}
+
+validate_branch() {
+  local b="$1"
+  git check-ref-format --branch "$b" >/dev/null 2>&1 || die "Invalid branch name: $b"
+}
+
+validate_dir_for_worktree() {
+  local d="$1"
+  # Refuse if the path is already a registered worktree
+  if git worktree list --porcelain | awk -v p="$d" '$1=="worktree" && $2==p {found=1} END{exit found?10:0}'; then
+    : # not found
+  else
+    if [ "$?" -eq 10 ]; then die "Directory already registered as a worktree: $d"; fi
+  fi
+  # Refuse if directory exists and is non-empty
+  if [ -e "$d" ] && [ -z "$(ls -A "$d" 2>/dev/null)" ]; then
+    : # empty dir is fine
+  elif [ -e "$d" ]; then
+    die "Directory exists and is not empty: $d"
+  fi
+}
+
+confirm() { gum confirm --affirmative "Yes" --negative "No" "$@"; }
+
+pick_base_ref() {
+  git fetch --all --prune --quiet || true
+
+  local head upstream mains rem_heads tags default_head choice
+  head="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo HEAD)"
+  upstream="$(git rev-parse --abbrev-ref "${head}@{upstream}" 2>/dev/null || true)"
+  default_head="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+
+  # Top candidates
+  mains="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin/main refs/remotes/origin/master 2>/dev/null | uniq)"
+  rem_heads="$(git for-each-ref --count=30 --sort=-committerdate --format='%(refname:short)' refs/remotes | sed 's#^#(remote) #')"
+  tags="$(git for-each-ref --count=10 --sort=-creatordate --format='%(refname:short)' refs/tags | sed 's#^#(tag) #')"
+
+  {
+    [ -n "$default_head" ] && echo "(default) ${default_head}"
+    echo "(local) ${head}"
+    [ -n "${upstream:-}" ] && echo "(upstream) ${upstream}"
+    [ -n "$mains" ] && printf "%s\n" "$mains"
+    [ -n "$rem_heads" ] && printf "%s\n" "$rem_heads"
+    [ -n "$tags" ] && printf "%s\n" "$tags"
+  } | awk 'NF' | awk '!seen[$0]++' | gum filter --placeholder "Pick base ref (type to search)…"
+}
+
+pick_sparse_paths() {
+  # Output newline-separated paths (or empty). Preserve spaces.
+  local -a dirs=()
+  while IFS= read -r d; do
+    [[ -n "$d" ]] && dirs+=("$d")
+  done < <(git ls-tree -d --name-only HEAD 2>/dev/null || true)
+
+  ((${#dirs[@]}==0)) && { echo ""; return 0; }
+
+  gum choose --no-limit --cursor-prefix "→ " --selected-prefix "✔ " --unselected-prefix "  " \
+    "${dirs[@]}" || true
+}
+
+# Retrieve branch for a given worktree path using porcelain (do NOT parse UI)
+branch_for_path() {
+  local p="$1"
+  git worktree list --porcelain | awk -v p="$p" '
+    $1=="worktree" && $2==p {hit=1; next}
+    hit && $1=="branch" {sub(/^refs\/heads\//,"",$2); print $2; exit}
+  '
+}
+
+# ---- Commands -----------------------------------------------------------------
+
+cmd_new() {
+  local base choice ref branch dir overwrite want_sparse sparse_paths
+
+  choice="$(pick_base_ref || true)"
+  if [ -z "${choice:-}" ]; then
+    ref="$WT_DEFAULT_BASE"
+  else
+    ref="$(awk '{print $NF}' <<<"$choice")"
+  fi
+
+  branch="$(gum input --placeholder "feature/something-cool" --prompt "New branch name: ")"
+  [ -z "$branch" ] && die "Branch name required."
+  validate_branch "$branch"
+
+  dir="${WT_ROOT}/$(basename "$branch" | tr '/' '-')"
+  dir="$(gum input --value "$dir" --prompt "Worktree directory: ")"
+  [ -z "$dir" ] && die "Directory required."
+  dir="$(abs_path "$dir")"
+  validate_dir_for_worktree "$dir"
+
+  overwrite=false
+  if git rev-parse --verify --quiet "$branch" >/dev/null; then
+    overwrite=$(confirm "Branch '$branch' exists. Reset it to '$ref' with -B?")
+  fi
+
+  want_sparse=false
+  if confirm "Use sparse checkout? (recommended for monorepos)"; then
+    want_sparse=true
+    gum spin --spinner dot --title "Indexing tree…" -- sleep 0.2
+    sparse_paths="$(pick_sparse_paths || true)"
+  fi
+
+  if [ "$overwrite" = "true" ]; then
+    gum spin --spinner line --title "Creating worktree at $dir…" -- \
+      run git worktree add --guess-remote -B "$branch" "$dir" "$ref"
+  else
+    gum spin --spinner line --title "Creating worktree at $dir…" -- \
+      run git worktree add --guess-remote -b "$branch" "$dir" "$ref"
+  fi
+
+  if [ "$want_sparse" = "true" ]; then
+    pushd "$dir" >/dev/null
+    run git sparse-checkout init --cone
+    if [ -n "${sparse_paths:-}" ]; then
+      # Convert newline -> array safely
+      if command -v mapfile >/dev/null 2>&1; then
+        mapfile -t arr < <(printf "%s\n" "$sparse_paths")
+      else
+        arr=(); while IFS= read -r line; do arr+=("$line"); done <<< "$sparse_paths"
+      fi
+      # Only set when we have at least one path
+      ((${#arr[@]})) && run git sparse-checkout set "${arr[@]}"
+    fi
+    popd >/dev/null
+  fi
+
+  gum format \
+    "# ✅ Worktree created\n\n- branch: **$branch**\n- base: **$ref**\n- dir: **$dir**"
+}
+
+cmd_remove() {
+  local porcelain choices pick path branch dirty FORCE upstream
+
+  porcelain="$(git worktree list --porcelain)"
+  [ -z "$porcelain" ] && die "No worktrees found."
+
+  choices="$(awk '
+    BEGIN{path="";branch="";lock=""}
+    /^worktree /{path=substr($0,10)}
+    /^branch /{branch=substr($0,8); gsub(/^refs\/heads\//,"",branch)}
+    /^locked/{lock=" (locked)"}
+    /^$/{
+      if (path!="") {
+        printf("%s  [%s]%s\n", path, branch, lock);
+        path="";branch="";lock=""
+      }
+    }
+    END{
+      if (path!="") printf("%s  [%s]%s\n", path, branch, lock);
+    }' <<< "$porcelain")"
+
+  pick="$(printf "%s\n" "$choices" | gum filter --placeholder "Pick a worktree to remove…")"
+  [ -z "$pick" ] && die "No selection."
+  path="$(echo "$pick" | awk '{print $1}')"
+  branch="$(branch_for_path "$path")"
+
+  # Check dirty status
+  dirty="$(git -C "$path" status --porcelain 2>/dev/null || true)"
+  if [ -n "$dirty" ]; then
+    confirm "Worktree has uncommitted changes. Force remove '$path' (branch $branch)?" || die "Cancelled."
+    FORCE=--force
+  else
+    FORCE=""
+  fi
+
+  gum spin --spinner line --title "Removing $path…" -- \
+    run git worktree remove ${FORCE} "$path"
+
+  # Offer to delete the branch if it is fully merged to its upstream
+  upstream="$(git rev-parse --abbrev-ref "$branch@{upstream}" 2>/dev/null || true)"
+  if [ -n "$upstream" ]; then
+    if git merge-base --is-ancestor "$branch" "$upstream" 2>/dev/null; then
+      if confirm "Delete branch '$branch' (merged into $upstream)?"; then
+        run git branch -d "$branch" >/dev/null 2>&1 || run git branch -D "$branch"
+      fi
+    fi
+  fi
+
+  gum format "# 🧹 Removed **$path** (branch **${branch:-detached}**)"
+}
+
+cmd_list() {
+  git worktree list --porcelain | awk '
+    BEGIN{path="";branch="";locked=0}
+    /^worktree /{path=substr($0,10)}
+    /^branch /{branch=substr($0,8); gsub(/^refs\/heads\//,"",branch)}
+    /^locked/{locked=1}
+    /^$/{
+      if (path!="") {
+        printf "- %s  [%s]%s\n", path, (branch?branch:"detached"), (locked?"  (locked)":"");
+        path="";branch="";locked=0
+      }
+    }
+    END{
+      if (path!="") printf "- %s  [%s]%s\n", path, (branch?branch:"detached"), (locked?"  (locked)":"");
+    }'
+}
+
+cmd_prune() {
+  gum spin --spinner line --title "Pruning stale worktrees…" -- run git worktree prune --expire=now
+  gum format "# ✂️  Pruned stale worktrees (if any)"
+}
+
+cmd_lock() {
+  local dir="${1:-}"; [ -z "$dir" ] && die "Usage: $0 lock <worktree-dir>"
+  run git worktree lock "$dir"
+  gum format "# 🔒 Locked **$dir**"
+}
+
+cmd_unlock() {
+  local dir="${1:-}"; [ -z "$dir" ] && die "Usage: $0 unlock <worktree-dir>"
+  run git worktree unlock "$dir"
+  gum format "# 🔓 Unlocked **$dir**"
+}
+
+usage() {
+  cat <<EOF
+wt v2 – pretty git worktree helper (gum-powered)
+
+Usage:
+  wt [--dry-run] <command>
+
+Commands:
+  new           Interactively create a worktree + branch
+  rm            Interactively remove a worktree (with safety checks)
+  ls            List worktrees (pretty)
+  prune         Prune stale entries (after manual deletions)
+  lock <dir>    Lock a worktree to prevent accidental prune
+  unlock <dir>  Unlock a worktree
+
+Options:
+  --dry-run     Print actions instead of executing them
+
+Env & Config:
+  WT_DEFAULT_BASE   (default: origin/HEAD or origin/main)
+  WT_ROOT           (default: ..)
+  WT_GUESS_REMOTE   (default: true)
+  DRY_RUN           (default: 0)
+  WT_CONFIG         (default: \$HOME/.config/wt/config) – sourced if exists
+
+Examples:
+  wt new
+  wt rm
+  WT_ROOT=../worktrees wt new
+  DRY_RUN=1 wt rm
+EOF
+}
+
+# ---- Arg parsing --------------------------------------------------------------
+
+if [[ "${1:-}" == "--dry-run" ]]; then
+  DRY_RUN=1
+  shift
+fi
+
+sub="${1:-}"
+case "$sub" in
+  new)     shift; cmd_new "$@";;
+  rm)      shift; cmd_remove "$@";;
+  ls)      shift; cmd_list "$@";;
+  prune)   shift; cmd_prune "$@";;
+  lock)    shift; cmd_lock "$@";;
+  unlock)  shift; cmd_unlock "$@";;
+  ""|help|-h|--help) usage;;
+  *) die "Unknown command: $sub";;
+esac
