@@ -70,3 +70,4 @@ background-opacity = 0.95
 resize-overlay = always
 resize-overlay-duration = 1s
 
+keybind = shift+enter=text:\x1b\r
