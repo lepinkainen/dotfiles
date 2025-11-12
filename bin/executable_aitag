@@ -67,6 +67,11 @@ fi
 
 IMAGE_NAME="$(basename -- "$IMAGE_PATH")"
 
+if ! command -v gum >/dev/null 2>&1; then
+  echo "gum CLI not found. Install gum from https://github.com/charmbracelet/gum" >&2
+  exit 1
+fi
+
 if [[ ! "$KEYWORD_COUNT" =~ ^[1-9][0-9]*$ ]]; then
   echo "Keyword count must be a positive integer" >&2
   exit 1
@@ -80,7 +85,19 @@ fi
 
 PROMPT+=" The image file name is '$IMAGE_NAME'; leverage it if it hints at useful context, but do not invent unsupported details."
 
-if ! KEYWORDS=$(ollama_image_prompt "$MODEL" "$IMAGE_PATH" "$PROMPT"); then
+SPINNER_TITLE="Querying $MODEL for keywords..."
+if ! KEYWORDS=$(
+  gum spin --spinner dot --title "$SPINNER_TITLE" -- bash -c '
+    set -euo pipefail
+    SCRIPT_DIR="$1"
+    MODEL="$2"
+    IMAGE_PATH="$3"
+    PROMPT="$4"
+    # shellcheck source=ollama_image_client.sh
+    source "${SCRIPT_DIR}/ollama_image_client.sh"
+    ollama_image_prompt "$MODEL" "$IMAGE_PATH" "$PROMPT"
+  ' bash "$SCRIPT_DIR" "$MODEL" "$IMAGE_PATH" "$PROMPT"
+); then
   exit 1
 fi
 

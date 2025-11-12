@@ -67,6 +67,11 @@ fi
 
 IMAGE_NAME="$(basename -- "$IMAGE_PATH")"
 
+if ! command -v gum >/dev/null 2>&1; then
+  echo "gum CLI not found. Install gum from https://github.com/charmbracelet/gum" >&2
+  exit 1
+fi
+
 if [[ ! "$SENTENCE_COUNT" =~ ^[1-9][0-9]*$ ]]; then
   echo "Sentence count must be a positive integer" >&2
   exit 1
@@ -80,8 +85,25 @@ fi
 
 PROMPT+=" The image file name is '$IMAGE_NAME'; consider any contextual hints it offers, but base claims only on visual evidence."
 
-if ! DESCRIPTION=$(ollama_image_prompt "$MODEL" "$IMAGE_PATH" "$PROMPT"); then
+SPINNER_TITLE="Querying $MODEL for a description..."
+if ! DESCRIPTION=$(
+  gum spin --spinner dot --title "$SPINNER_TITLE" -- bash -c '
+    set -euo pipefail
+    SCRIPT_DIR="$1"
+    MODEL="$2"
+    IMAGE_PATH="$3"
+    PROMPT="$4"
+    # shellcheck source=ollama_image_client.sh
+    source "${SCRIPT_DIR}/ollama_image_client.sh"
+    ollama_image_prompt "$MODEL" "$IMAGE_PATH" "$PROMPT"
+  ' bash "$SCRIPT_DIR" "$MODEL" "$IMAGE_PATH" "$PROMPT"
+); then
   exit 1
 fi
 
-printf '%s\n' "$DESCRIPTION"
+gum style \
+  --border rounded \
+  --padding "1 2" \
+  --align left \
+  --width 90 \
+  "$DESCRIPTION"
