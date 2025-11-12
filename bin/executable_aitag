@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEFAULT_MODEL="llava:13b"
+DEFAULT_KEYWORD_COUNT=8
+
+SCRIPT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ollama_image_client.sh
+source "${SCRIPT_DIR}/ollama_image_client.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: aitag [-m model] [-n count] [-p extra_prompt] image_path
+
+Analyse an image with a local Ollama + LLaVA model and emit descriptive keywords.
+
+Options:
+  -m model          Ollama model name (default: llava:13b)
+  -n count          Number of keywords to request (default: 8)
+  -p extra_prompt   Extra instructions appended to the keyword prompt
+
+Environment overrides:
+  OLLAMA_MODEL, KEYWORD_COUNT, EXTRA_PROMPT, OLLAMA_HOST, OLLAMA_API_URL
+EOF
+}
+
+MODEL="${OLLAMA_MODEL:-$DEFAULT_MODEL}"
+KEYWORD_COUNT="${KEYWORD_COUNT:-$DEFAULT_KEYWORD_COUNT}"
+EXTRA_PROMPT="${EXTRA_PROMPT:-}"
+
+while getopts ":m:n:p:h" opt; do
+  case "$opt" in
+    m) MODEL="$OPTARG" ;;
+    n) KEYWORD_COUNT="$OPTARG" ;;
+    p) EXTRA_PROMPT="$OPTARG" ;;
+    h)
+      usage
+      exit 0
+      ;;
+    :)
+      echo "Missing argument for -$OPTARG" >&2
+      usage >&2
+      exit 1
+      ;;
+    ?)
+      echo "Unknown option -$OPTARG" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+shift $((OPTIND - 1))
+
+if [[ $# -lt 1 ]]; then
+  echo "Image path is required" >&2
+  usage >&2
+  exit 1
+fi
+
+IMAGE_PATH="$1"
+
+if [[ ! -f "$IMAGE_PATH" ]]; then
+  echo "Image not found: $IMAGE_PATH" >&2
+  exit 1
+fi
+
+IMAGE_NAME="$(basename -- "$IMAGE_PATH")"
+
+if [[ ! "$KEYWORD_COUNT" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Keyword count must be a positive integer" >&2
+  exit 1
+fi
+
+PROMPT="List the top $KEYWORD_COUNT concise, single- or double-word keywords that summarize the primary objects, actions, and context in the provided image. Respond with one keyword per line, no numbering or extra text."
+
+if [[ -n "$EXTRA_PROMPT" ]]; then
+  PROMPT+=" $EXTRA_PROMPT"
+fi
+
+PROMPT+=" The image file name is '$IMAGE_NAME'; leverage it if it hints at useful context, but do not invent unsupported details."
+
+if ! KEYWORDS=$(ollama_image_prompt "$MODEL" "$IMAGE_PATH" "$PROMPT"); then
+  exit 1
+fi
+
+printf '%s\n' "$KEYWORDS"

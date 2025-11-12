@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEFAULT_MODEL="llava:13b"
+DEFAULT_SENTENCE_COUNT=2
+
+SCRIPT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ollama_image_client.sh
+source "${SCRIPT_DIR}/ollama_image_client.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: aicat [-m model] [-s sentences] [-p extra_prompt] image_path
+
+Generate a concise, multi-sentence natural-language description of an image via Ollama + LLaVA.
+
+Options:
+  -m model          Ollama vision model to use (default: llava:13b)
+  -s sentences      Number of sentences to request (default: 2)
+  -p extra_prompt   Additional instructions appended to the base prompt
+
+Environment overrides:
+  OLLAMA_MODEL, SENTENCE_COUNT, EXTRA_PROMPT, OLLAMA_HOST, OLLAMA_API_URL
+EOF
+}
+
+MODEL="${OLLAMA_MODEL:-$DEFAULT_MODEL}"
+SENTENCE_COUNT="${SENTENCE_COUNT:-$DEFAULT_SENTENCE_COUNT}"
+EXTRA_PROMPT="${EXTRA_PROMPT:-}"
+
+while getopts ":m:s:p:h" opt; do
+  case "$opt" in
+    m) MODEL="$OPTARG" ;;
+    s) SENTENCE_COUNT="$OPTARG" ;;
+    p) EXTRA_PROMPT="$OPTARG" ;;
+    h)
+      usage
+      exit 0
+      ;;
+    :)
+      echo "Missing argument for -$OPTARG" >&2
+      usage >&2
+      exit 1
+      ;;
+    ?)
+      echo "Unknown option -$OPTARG" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+shift $((OPTIND - 1))
+
+if [[ $# -lt 1 ]]; then
+  echo "Image path is required" >&2
+  usage >&2
+  exit 1
+fi
+
+IMAGE_PATH="$1"
+
+if [[ ! -f "$IMAGE_PATH" ]]; then
+  echo "Image not found: $IMAGE_PATH" >&2
+  exit 1
+fi
+
+IMAGE_NAME="$(basename -- "$IMAGE_PATH")"
+
+if [[ ! "$SENTENCE_COUNT" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Sentence count must be a positive integer" >&2
+  exit 1
+fi
+
+PROMPT="Describe the provided image in $SENTENCE_COUNT complete sentences covering the main subjects, actions, context, and mood. Explicitly call out any visible text by quoting or paraphrasing it and explain how it relates to the scene. Stay factual and avoid bullet lists."
+
+if [[ -n "$EXTRA_PROMPT" ]]; then
+  PROMPT+=" $EXTRA_PROMPT"
+fi
+
+PROMPT+=" The image file name is '$IMAGE_NAME'; consider any contextual hints it offers, but base claims only on visual evidence."
+
+if ! DESCRIPTION=$(ollama_image_prompt "$MODEL" "$IMAGE_PATH" "$PROMPT"); then
+  exit 1
+fi
+
+printf '%s\n' "$DESCRIPTION"
