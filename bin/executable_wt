@@ -140,43 +140,75 @@ branch_for_path() {
 # ---- Commands -----------------------------------------------------------------
 
 cmd_new() {
-  local base choice ref branch dir overwrite want_sparse sparse_paths
+  local base choice ref branch dir overwrite want_sparse sparse_paths interactive=true
 
-  choice="$(pick_base_ref || true)"
-  if [ -z "${choice:-}" ]; then
-    ref="$WT_DEFAULT_BASE"
+  # Allow command line arguments for testing: wt new <branch> <dir> <ref> <sparse> <overwrite>
+  if [ -n "${1:-}" ]; then
+    interactive=false
+    branch="$1"
+    dir="${2:-}"
+    ref="${3:-$WT_DEFAULT_BASE}"
+    want_sparse="${4:-false}"
+    overwrite="${5:-false}"
+    sparse_paths=""  # For non-interactive mode, no sparse paths
+    
+    [ -z "$branch" ] && die "Branch name required."
+    validate_branch "$branch"
+    
+    [ -z "$dir" ] && dir="${WT_ROOT}/$(basename "$branch" | tr '/' '-')"
+    dir="$(abs_path "$dir")"
+    validate_dir_for_worktree "$dir"
   else
-    ref="$(awk '{print $NF}' <<<"$choice")"
-  fi
+    choice="$(pick_base_ref || true)"
+    if [ -z "${choice:-}" ]; then
+      ref="$WT_DEFAULT_BASE"
+    else
+      ref="$(awk '{print $NF}' <<<"$choice")"
+    fi
 
-  branch="$(gum input --placeholder "feature/something-cool" --prompt "New branch name: ")"
-  [ -z "$branch" ] && die "Branch name required."
-  validate_branch "$branch"
+    branch="$(gum input --placeholder "feature/something-cool" --prompt "New branch name: ")"
+    [ -z "$branch" ] && die "Branch name required."
+    validate_branch "$branch"
 
-  dir="${WT_ROOT}/$(basename "$branch" | tr '/' '-')"
-  dir="$(gum input --value "$dir" --prompt "Worktree directory: ")"
-  [ -z "$dir" ] && die "Directory required."
-  dir="$(abs_path "$dir")"
-  validate_dir_for_worktree "$dir"
+    dir="${WT_ROOT}/$(basename "$branch" | tr '/' '-')"
+    dir="$(gum input --value "$dir" --prompt "Worktree directory: ")"
+    [ -z "$dir" ] && die "Directory required."
+    dir="$(abs_path "$dir")"
+    validate_dir_for_worktree "$dir"
 
-  overwrite=false
-  if git rev-parse --verify --quiet "$branch" >/dev/null; then
-    overwrite=$(confirm "Branch '$branch' exists. Reset it to '$ref' with -B?")
-  fi
+    overwrite=false
+    if git rev-parse --verify --quiet "$branch" >/dev/null; then
+      overwrite=$(confirm "Branch '$branch' exists. Reset it to '$ref' with -B?")
+    fi
 
-  want_sparse=false
-  if confirm "Use sparse checkout? (recommended for monorepos)"; then
-    want_sparse=true
-    gum spin --spinner dot --title "Indexing tree…" -- sleep 0.2
-    sparse_paths="$(pick_sparse_paths || true)"
+    want_sparse=false
+    if confirm "Use sparse checkout? (recommended for monorepos)"; then
+      want_sparse=true
+      gum spin --spinner dot --title "Indexing tree…" -- sleep 0.2
+      sparse_paths="$(pick_sparse_paths || true)"
+    fi
   fi
 
   if [ "$overwrite" = "true" ]; then
-    gum spin --spinner line --title "Creating worktree at $dir…" -- \
+    if [ "$interactive" = "true" ]; then
+      if [ "${DRY_RUN}" = "1" ]; then
+        gum spin --spinner line --title "Creating worktree at ${dir}…" -- printf "[dry-run] git worktree add --guess-remote -B %q %q %q\n" "$branch" "$dir" "$ref"
+      else
+        gum spin --spinner line --title "Creating worktree at ${dir}…" -- git worktree add --guess-remote -B "$branch" "$dir" "$ref"
+      fi
+    else
       run git worktree add --guess-remote -B "$branch" "$dir" "$ref"
+    fi
   else
-    gum spin --spinner line --title "Creating worktree at $dir…" -- \
+    if [ "$interactive" = "true" ]; then
+      if [ "${DRY_RUN}" = "1" ]; then
+        gum spin --spinner line --title "Creating worktree at ${dir}…" -- printf "[dry-run] git worktree add --guess-remote -b %q %q %q\n" "$branch" "$dir" "$ref"
+      else
+        gum spin --spinner line --title "Creating worktree at ${dir}…" -- git worktree add --guess-remote -b "$branch" "$dir" "$ref"
+      fi
+    else
       run git worktree add --guess-remote -b "$branch" "$dir" "$ref"
+    fi
   fi
 
   if [ "$want_sparse" = "true" ]; then
@@ -195,8 +227,12 @@ cmd_new() {
     popd >/dev/null
   fi
 
-  gum format \
-    "# ✅ Worktree created\n\n- branch: **$branch**\n- base: **$ref**\n- dir: **$dir**"
+  if [ "$interactive" = "true" ]; then
+    gum format \
+      "# ✅ Worktree created\n\n- branch: **$branch**\n- base: **$ref**\n- dir: **$dir**"
+  else
+    echo "Worktree created: branch=$branch base=$ref dir=$dir"
+  fi
 }
 
 cmd_remove() {
@@ -220,9 +256,10 @@ cmd_remove() {
       if (path!="") printf("%s  [%s]%s\n", path, branch, lock);
     }' <<< "$porcelain")"
 
-  pick="$(printf "%s\n" "$choices" | gum filter --placeholder "Pick a worktree to remove…")"
+  pick="$(printf "%s\n" "$choices" | gum filter --placeholder "Pick a worktree to remove…" || true)"
   [ -z "$pick" ] && die "No selection."
-  path="$(echo "$pick" | awk '{print $1}')"
+  path="${pick%% *}"
+  [ -z "$path" ] && die "Failed to extract path from selection."
   branch="$(branch_for_path "$path")"
 
   # Check dirty status
@@ -234,8 +271,11 @@ cmd_remove() {
     FORCE=""
   fi
 
-  gum spin --spinner line --title "Removing $path…" -- \
-    run git worktree remove ${FORCE} "$path"
+  if [ "${DRY_RUN}" = "1" ]; then
+    gum spin --spinner line --title "Removing ${path}…" -- printf "[dry-run] git worktree remove %s %q\n" "${FORCE}" "${path}"
+  else
+    gum spin --spinner line --title "Removing ${path}…" -- git worktree remove ${FORCE} "${path}"
+  fi
 
   # Offer to delete the branch if it is fully merged to its upstream
   upstream="$(git rev-parse --abbrev-ref "$branch@{upstream}" 2>/dev/null || true)"
@@ -268,7 +308,11 @@ cmd_list() {
 }
 
 cmd_prune() {
-  gum spin --spinner line --title "Pruning stale worktrees…" -- run git worktree prune --expire=now
+  if [ "${DRY_RUN}" = "1" ]; then
+    gum spin --spinner line --title "Pruning stale worktrees…" -- printf "[dry-run] git worktree prune --expire=now\n"
+  else
+    gum spin --spinner line --title "Pruning stale worktrees…" -- git worktree prune --expire=now
+  fi
   gum format "# ✂️  Pruned stale worktrees (if any)"
 }
 
