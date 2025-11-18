@@ -41,6 +41,8 @@ config.keys = {
     -- Font size: increase with Cmd+= and Cmd+Shift+= (Cmd++)
     { key = '=', mods = 'SUPER', action = act.IncreaseFontSize },
     { key = '=', mods = 'SUPER|SHIFT', action = act.IncreaseFontSize },
+    -- Shift-enter sends newline on Claude Code
+    {key="Enter", mods="SHIFT", action=wezterm.action{SendString="\x1b\r"}},
     {
         -- I'm used to tmux bindings, so am using the quotes (") key to
         -- split horizontally, and the percent (%) key to split vertically.
