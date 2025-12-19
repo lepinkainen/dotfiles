@@ -1,19 +1,19 @@
 {
-    "extractor": {
-        "instagram": {
-            "filename": "{username}_{post_date:%Y%m%d}_{sidecar_media_id:?/_/}{media_id}.{extension}",
-            "directory": ["{category}","{username}"],
-            "skip": "abort:24",
-            "cookies": ["firefox", null, null, null, "instagram.com"]
-        }
-    },
-    "downloader": {
+  "extractor": {
+    "base-directory": "~/Downloads/_gallery-dl/",
 
+    "instagram": {
+      "filename": "{username}_{post_date:%Y%m%d}_{sidecar_media_id:?/_/}{media_id}.{extension}",
+      "directory": ["{category}", "{username}"],
+      "skip": "abort:24",
+      "cookies": ["firefox", null, null, null, "instagram.com"]
     },
-    "output": {
-
-    },
-    "postprocessor": {
-
+    "erome": {
+      "directory": ["{category}", "{user}", "{title} {album_id}"],
+      "filename": "{title} {num:>02}.{extension}"
     }
+  },
+  "downloader": {},
+  "output": {},
+  "postprocessor": {}
 }
