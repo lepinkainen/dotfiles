@@ -71,9 +71,8 @@ prefix_rule(pattern=["git", "submodule"], decision="allow")
 # rm is only dangerous when recursive/force/glob-y. Prompt on those.
 # Allow plain single-file rm (no -r/-f) without prompting.
 prefix_rule(
-  pattern=["rm"],
+  pattern=["rm", ["-r", "-rf", "-fr", "-f", "--recursive", "--force"]],
   decision="prompt",
-  match=[" rm -r", " rm -rf", " rm -fr", " rm -f", " rm --recursive", " rm --force"],
 )
 
 # Prompt on moves/renames (can be destructive). If you prefer to allow mv by default, delete this.
@@ -93,13 +92,10 @@ prefix_rule(pattern=["git", "reset"], decision="prompt")
 prefix_rule(pattern=["git", "rebase"], decision="prompt")
 prefix_rule(pattern=["git", "clean"], decision="prompt")
 
-# Prompt on force pushes explicitly (belt & suspenders).
-prefix_rule(
-  pattern=["git", "push"],
-  decision="prompt",
-  match=[" --force", " -f", "--force-with-lease"],
-)
 
 # --- Optional: forbid truly dangerous patterns ---
 # If you never want the agent to do these automatically, flip to forbidden.
-prefix_rule(pattern=["rm"], decision="forbidden", match=[" rm -rf /", " rm -rf /*", " rm -rf ~/"])
+prefix_rule(
+  pattern=["rm", "-rf", ["/", "/*", "~/"]],
+  decision="forbidden",
+)
