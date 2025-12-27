@@ -1,0 +1,25 @@
+# Typical “run tests without babysitting” setup:
+sandbox_mode    = "workspace-write"
+approval_policy = "on-failure"   # prompts only when a command fails
+model = "gpt-5.2-codex"
+model_reasoning_effort = "high"
+
+# allow outbound network for commands executed in the sandbox
+[sandbox_workspace_write]
+network_access = true
+
+# Optional: if you want prompts only for “untrusted” commands instead:
+# approval_policy = "untrusted"
+
+# Enable codex web search capability
+[features]
+web_search_request = true
+
+[projects."/Users/shrike/projects/"]
+trust_level = "trusted"
+
+[notice]
+"hide_gpt-5.1-codex-max_migration_prompt" = true
+
+[notice.model_migrations]
+"gpt-5.1-codex-max" = "gpt-5.2-codex"
