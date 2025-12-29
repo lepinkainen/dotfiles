@@ -1,23 +1,32 @@
-#!/bin/sh
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "Installing llm plugins..."
+llm_plugins=(
+    llm-anthropic
+    llm-cmd
+    llm-fragments-github
+    llm-fragments-reader
+    llm-fragments-youtube
+    llm-gemini
+    llm-github-copilot
+    llm-openai-plugin
+)
 
-if ! command -v llm >/dev/null 2>&1; then
-    echo "Error: llm is not installed."
-    echo "Install it via 'brew install llm' first."
+llm_with_args=()
+for plugin in "${llm_plugins[@]}"; do
+    llm_with_args+=("--with" "$plugin")
+done
+echo "Installing llm with plugins: ${llm_plugins[*]}"
+
+uv tool install --reinstall -U llm "${llm_with_args[@]}"
+
+
+TEMPLATES_PATH=$(llm templates path 2>/dev/null || echo "")
+if [[ -z "${TEMPLATES_PATH}" ]]; then
+    echo "Error: Unable to determine llm templates path" >&2
     exit 1
 fi
 
-echo "Installing llm-claude..."
-llm install llm-claude || echo "Warning: Failed to install llm-claude"
-
-echo "Installing llm-ollama..."
-llm install llm-ollama || echo "Warning: Failed to install llm-ollama"
-
-echo "Installing llm-gemini..."
-llm install llm-gemini || echo "Warning: Failed to install llm-gemini"
-
-echo ""
-echo "Installed plugins:"
-llm plugins
+# Create datasette llm config directory and symlink templates
+mkdir -p "${HOME}/.config/io.datasette.llm"
+ln -sfh "${TEMPLATES_PATH}" "${HOME}/.config/io.datasette.llm/templates"
