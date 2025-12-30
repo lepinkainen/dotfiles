@@ -9,6 +9,7 @@ llm_plugins=(
     llm-fragments-youtube
     llm-gemini
     llm-github-copilot
+    llm-hacker-news
     llm-openai-plugin
 )
 
@@ -29,4 +30,5 @@ fi
 
 # Create datasette llm config directory and symlink templates
 mkdir -p "${HOME}/.config/io.datasette.llm"
+# Easier way to access the template directory
 ln -sfh "${TEMPLATES_PATH}" "${HOME}/.config/io.datasette.llm/templates"

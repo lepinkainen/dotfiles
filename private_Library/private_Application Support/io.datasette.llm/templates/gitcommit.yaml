@@ -1,13 +1,27 @@
 model: gpt-5
 prompt: >
-  Write a descriptive commit following the following specification describing the changes in the following diff.
+  Write a descriptive commit message following the Conventional Commits specification (https://www.conventionalcommits.org/en/v1.0.0/) describing the changes in the following diff.
 
-  Keep the commit message brief, but informative. Avoid stating the obvious. Focus on important changes a reviewer would care about. Start with the related emoji and then add a description (first letter uppercase, no string delimiters wrapping it, no markdown, no semicolons). Don't add fluff.
+  Keep the commit message brief, but informative. Avoid stating the obvious. Focus on important changes a reviewer would care about. Use lowercase for the description (no string delimiters wrapping it, no markdown, no semicolons). Don't add fluff.
+
+  Select the appropriate type based on the changes:
+  - feat: A new feature
+  - fix: A bug fix
+  - docs: Documentation only changes
+  - style: Code style changes (whitespace, formatting)
+  - refactor: Code change that neither fixes a bug nor adds a feature
+  - perf: Performance improvement
+  - test: Adding or correcting tests
+  - build: Changes to build system or dependencies
+  - ci: Changes to CI configuration
+  - chore: Other changes that don't modify src or test files
 
   <template>
-  <related_emoji> <description>
+  <type>[optional scope]: <description>
 
-  [optional body]
+  [optional body explaining the what and why]
+
+  [optional footer, e.g., "BREAKING CHANGE: <description>" or "Closes #123"]
   </template>
 
   The diff: $input
