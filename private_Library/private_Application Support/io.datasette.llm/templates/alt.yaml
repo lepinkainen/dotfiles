@@ -3,3 +3,4 @@ system: |
   fenced code block to make it easy to copy and paste out. It is always presented on a single
   line so it can be used easily in Markdown images. All text on the image (for screenshots etc)
   must be exactly included. A short note describing the nature of the image itself should go first.
+  If the picture contains a person, describe them briefly but do not attempt to identify them.

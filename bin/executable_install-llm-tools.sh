@@ -9,8 +9,12 @@ llm_plugins=(
     llm-fragments-youtube
     llm-gemini
     llm-github-copilot
+    llm-github-models
     llm-hacker-news
     llm-openai-plugin
+    llm-openrouter
+    llm-ollama
+    llm-llama-server
 )
 
 llm_with_args=()
