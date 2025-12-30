@@ -7,6 +7,7 @@
 #     "llm-fragments-reader",
 #     "llm-fragments-github",
 #     "llm-hacker-news",
+#     "rich",
 # ]
 # ///
 """
@@ -27,6 +28,9 @@ Examples:
 import sys
 import re
 import llm
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.panel import Panel
 
 # Default prompts for each content type
 ARTICLE_PROMPT = """Summarize this article in a clear, well-formatted way for reading in a terminal. Use markdown formatting with bullet points where appropriate. Include the main ideas and key points."""
@@ -107,12 +111,14 @@ def build_fragment_arg(content_type: str, url: str) -> str:
 
 def main():
     """Main entry point for the CLI."""
+    console = Console(width=100)
+
     if len(sys.argv) < 2:
-        print("usage: q <url> [question]", file=sys.stderr)
-        print("\nExamples:", file=sys.stderr)
-        print("  q https://youtube.com/watch?v=...", file=sys.stderr)
-        print("  q https://news.ycombinator.com/item?id=123456", file=sys.stderr)
-        print(
+        console.print("[red]usage:[/red] q <url> [question]", file=sys.stderr)
+        console.print("\n[yellow]Examples:[/yellow]", file=sys.stderr)
+        console.print("  q https://youtube.com/watch?v=...", file=sys.stderr)
+        console.print("  q https://news.ycombinator.com/item?id=123456", file=sys.stderr)
+        console.print(
             "  q https://example.com/article 'What are the main points?'",
             file=sys.stderr,
         )
@@ -131,6 +137,21 @@ def main():
         # Build fragment argument
         fragment_arg = build_fragment_arg(content_type, url)
 
+        # Show what we're processing
+        content_type_label = {
+            "youtube": "🎥 YouTube",
+            "hn": "🗨️  Hacker News",
+            "github": "🐙 GitHub",
+            "reader": "📄 Article"
+        }.get(content_type, content_type)
+
+        console.print(Panel(
+            f"[cyan]{url}[/cyan]",
+            title=f"[bold]{content_type_label}[/bold]",
+            border_style="blue"
+        ))
+        console.print()
+
         # Load plugins to access fragment loaders
         llm.load_plugins()
 
@@ -142,10 +163,14 @@ def main():
 
         # Get the appropriate loader
         if fragment_type not in loaders:
-            print(
-                f"Error: Fragment loader '{fragment_type}' not found", file=sys.stderr
+            console.print(
+                f"[red]Error:[/red] Fragment loader '{fragment_type}' not found",
+                file=sys.stderr
             )
-            print(f"Available loaders: {', '.join(loaders.keys())}", file=sys.stderr)
+            console.print(
+                f"Available loaders: {', '.join(loaders.keys())}",
+                file=sys.stderr
+            )
             sys.exit(1)
 
         # Load the fragment
@@ -161,19 +186,23 @@ def main():
         model = llm.get_model(llm.get_default_model())
         response = model.prompt(prompt, fragments=fragments)
 
-        # Stream output to terminal
+        # Collect response and render as markdown
+        full_response = ""
         for chunk in response:
-            print(chunk, end="", flush=True)
-        print()  # Final newline
+            full_response += chunk
+
+        # Render the markdown with rich
+        console.print(Markdown(full_response))
+        console.print()  # Final newline
 
     except ValueError as e:
-        print(f"Error: {e}", file=sys.stderr)
+        console.print(f"[red]Error:[/red] {e}", file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:
-        print("\nInterrupted", file=sys.stderr)
+        console.print("\n[yellow]Interrupted[/yellow]", file=sys.stderr)
         sys.exit(130)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        console.print(f"[red]Error:[/red] {e}", file=sys.stderr)
         sys.exit(1)
 
 
