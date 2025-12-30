@@ -1,0 +1,181 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "llm",
+#     "llm-fragments-youtube",
+#     "llm-fragments-reader",
+#     "llm-fragments-github",
+#     "llm-hacker-news",
+# ]
+# ///
+"""
+Unified question-answer tool for web content.
+
+Automatically detects content type (YouTube, Hacker News, web articles)
+and routes to the appropriate llm fragment provider with tailored prompts.
+
+Usage:
+    q <url> [question]
+
+Examples:
+    q https://youtube.com/watch?v=...
+    q https://news.ycombinator.com/item?id=123456
+    q https://example.com/article "What are the main points?"
+"""
+
+import sys
+import re
+import llm
+
+# Default prompts for each content type
+ARTICLE_PROMPT = """Summarize this article in a clear, well-formatted way for reading in a terminal. Use markdown formatting with bullet points where appropriate. Include the main ideas and key points."""
+
+YOUTUBE_PROMPT = """Summarize this video in a clear, well-formatted way for reading in a terminal. Use markdown formatting with bullet points where appropriate. Include the main topics and key takeaways."""
+
+HN_PROMPT = """Summarize the Hacker News discussion.
+
+Requirements:
+- Focus on the main technical and factual points raised by commenters.
+- Capture points of disagreement or controversy.
+- Include 3-6 short, illustrative direct quotes (verbatim), attributed generically (e.g. "one commenter").
+- Avoid fluff, meta commentary, or praise.
+- Do not invent facts or quotes.
+
+Output format:
+- 3-6 bullet points for the summary
+- Then a "Notable quotes" section with the quotes and relevant context."""
+
+
+def detect_content_type(url: str) -> tuple[str, str]:
+    """
+    Detect content type from URL and return appropriate fragment type and default prompt.
+
+    Returns:
+        tuple[str, str]: (fragment_type, default_prompt)
+    """
+    # YouTube
+    if "youtube.com" in url or "youtu.be" in url:
+        return ("youtube", YOUTUBE_PROMPT)
+
+    # Hacker News
+    if "news.ycombinator.com/item" in url:
+        return ("hn", HN_PROMPT)
+
+    # GitHub
+    if "github.com" in url:
+        return ("github", ARTICLE_PROMPT)
+
+    # Default: web article via reader
+    return ("reader", ARTICLE_PROMPT)
+
+
+def build_fragment_arg(content_type: str, url: str) -> str:
+    """
+    Construct the fragment argument for llm fragment loader.
+
+    Args:
+        content_type: Type of content ('youtube', 'hn', 'github', 'reader')
+        url: The URL to process
+
+    Returns:
+        str: Fragment argument in format 'type:identifier'
+    """
+    if content_type == "youtube":
+        return f"youtube:{url}"
+
+    elif content_type == "hn":
+        # Extract id from URL (e.g., ?id=12345)
+        match = re.search(r"id=(\d+)", url)
+        if match:
+            return f"hn:{match.group(1)}"
+        raise ValueError(f"Could not extract HN item id from URL: {url}")
+
+    elif content_type == "github":
+        # Extract owner/repo from GitHub URL
+        # Supports: https://github.com/owner/repo or github.com/owner/repo
+        match = re.search(r"github\.com/([^/]+/[^/]+)", url)
+        if match:
+            return f"github:{match.group(1)}"
+        raise ValueError(f"Could not extract GitHub repo from URL: {url}")
+
+    elif content_type == "reader":
+        return f"reader:{url}"
+
+    raise ValueError(f"Unknown content type: {content_type}")
+
+
+def main():
+    """Main entry point for the CLI."""
+    if len(sys.argv) < 2:
+        print("usage: q <url> [question]", file=sys.stderr)
+        print("\nExamples:", file=sys.stderr)
+        print("  q https://youtube.com/watch?v=...", file=sys.stderr)
+        print("  q https://news.ycombinator.com/item?id=123456", file=sys.stderr)
+        print(
+            "  q https://example.com/article 'What are the main points?'",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    url = sys.argv[1]
+    question = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else None
+
+    try:
+        # Detect content type and get default prompt
+        content_type, default_prompt = detect_content_type(url)
+
+        # Use custom question if provided, otherwise use default
+        prompt = question if question else default_prompt
+
+        # Build fragment argument
+        fragment_arg = build_fragment_arg(content_type, url)
+
+        # Load plugins to access fragment loaders
+        llm.load_plugins()
+
+        # Get fragment loaders
+        loaders = llm.get_fragment_loaders()
+
+        # Extract fragment type and argument
+        fragment_type, _, fragment_id = fragment_arg.partition(":")
+
+        # Get the appropriate loader
+        if fragment_type not in loaders:
+            print(
+                f"Error: Fragment loader '{fragment_type}' not found", file=sys.stderr
+            )
+            print(f"Available loaders: {', '.join(loaders.keys())}", file=sys.stderr)
+            sys.exit(1)
+
+        # Load the fragment
+        fragment = loaders[fragment_type](fragment_id)
+
+        # Handle fragment loaders that return lists (like github)
+        if isinstance(fragment, list):
+            fragments = fragment
+        else:
+            fragments = [fragment]
+
+        # Get default model and execute prompt with fragment
+        model = llm.get_model(llm.get_default_model())
+        response = model.prompt(prompt, fragments=fragments)
+
+        # Stream output to terminal
+        for chunk in response:
+            print(chunk, end="", flush=True)
+        print()  # Final newline
+
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\nInterrupted", file=sys.stderr)
+        sys.exit(130)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
