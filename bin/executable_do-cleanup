@@ -1,0 +1,296 @@
+#!/usr/bin/env bash
+# do-cleanup - System cleanup utility for Homebrew, Docker, and uv
+# Interactive maintenance script with gum-powered UI
+
+set -euo pipefail
+
+# Trap interrupts for clean exit
+trap 'echo; gum style --foreground 3 "Cleanup interrupted"; exit 130' INT TERM
+
+# ---- Helper functions ------------------------------------------------------
+
+die() {
+    gum style --foreground 1 --bold "Error: $*" >&2
+    exit 1
+}
+
+need() {
+    command -v "$1" >/dev/null 2>&1 || die "Missing dependency: $1"
+}
+
+warn() {
+    gum style --foreground 3 "Warning: $*" >&2
+}
+
+note() {
+    gum style --foreground 6 "$*"
+}
+
+confirm() {
+    gum confirm --affirmative "Yes" --negative "No" "$@"
+}
+
+check_tool() {
+    local tool="$1"
+    local name="${2:-$tool}"
+
+    if ! command -v "$tool" >/dev/null 2>&1; then
+        warn "$name is not installed (skipping)"
+        return 1
+    fi
+    return 0
+}
+
+usage() {
+    cat <<'EOF'
+do-cleanup - System cleanup utility
+
+Performs maintenance tasks for Homebrew, Docker, and uv package managers.
+
+Usage:
+  do-cleanup           Run interactive cleanup
+  do-cleanup --help    Show this help
+
+Cleanup Tasks:
+  Homebrew:
+    - brew cleanup       Remove stale downloads and old versions
+    - brew autoremove    Remove orphaned dependencies
+    - brew doctor        (optional) System diagnostics
+
+  Docker:
+    - docker system prune -af          Remove unused containers, images, networks
+    - docker system prune --volumes    (optional) Also remove anonymous volumes
+
+  UV:
+    - uv cache clean        Clear package cache
+    - uv tool upgrade --all (optional) Upgrade all installed tools
+
+Features:
+  - Interactive confirmations for destructive operations
+  - Graceful handling of missing tools
+  - Progress spinners for long operations
+  - Detailed summary of completed tasks
+  - Logs saved to /tmp/ for troubleshooting
+
+Requirements:
+  - gum (https://github.com/charmbracelet/gum)
+  - At least one of: brew, docker, uv
+
+Examples:
+  do-cleanup              Run full interactive cleanup
+  do-cleanup --help       Show this help
+EOF
+}
+
+# ---- Cleanup functions -----------------------------------------------------
+
+cleanup_homebrew() {
+    check_tool brew "Homebrew" || return 0
+
+    local -a results=()
+
+    # Task 1: brew cleanup
+    if gum spin --spinner dot --title "Running brew cleanup..." -- \
+       brew cleanup 2>&1 | tee /tmp/brew-cleanup.log >/dev/null; then
+        results+=("✅ brew cleanup completed")
+    else
+        results+=("⚠️  brew cleanup had issues (see /tmp/brew-cleanup.log)")
+    fi
+
+    # Task 2: brew autoremove
+    if gum spin --spinner dot --title "Running brew autoremove..." -- \
+       brew autoremove 2>&1 | tee /tmp/brew-autoremove.log >/dev/null; then
+        results+=("✅ brew autoremove completed")
+    else
+        results+=("⚠️  brew autoremove had issues (see /tmp/brew-autoremove.log)")
+    fi
+
+    # Task 3: brew doctor (optional)
+    if confirm "Run 'brew doctor' for diagnostics?"; then
+        if gum spin --spinner dot --title "Running brew doctor..." -- \
+           brew doctor 2>&1 | tee /tmp/brew-doctor.log >/dev/null; then
+            results+=("✅ brew doctor completed (see /tmp/brew-doctor.log)")
+        else
+            results+=("⚠️  brew doctor found issues (see /tmp/brew-doctor.log)")
+        fi
+    else
+        results+=("⏭️  Skipped brew doctor")
+    fi
+
+    printf "%s\n" "${results[@]}"
+}
+
+cleanup_docker() {
+    check_tool docker "Docker" || return 0
+
+    # Check if Docker daemon is running
+    if ! docker info >/dev/null 2>&1; then
+        warn "Docker daemon is not running (skipping)"
+        echo "⏭️  Docker cleanup skipped (daemon not running)"
+        return 0
+    fi
+
+    local -a results=()
+
+    # Show what will be pruned
+    gum style --border rounded --padding "1 2" --foreground 3 \
+        "Docker system prune will remove:" \
+        "" \
+        "• All stopped containers" \
+        "• All networks not used by containers" \
+        "• All dangling images" \
+        "• All build cache"
+
+    echo
+
+    # Confirm for volumes (destructive)
+    local prune_volumes=false
+    if confirm "Also prune anonymous volumes? (DESTRUCTIVE - may lose data)"; then
+        warn "This will delete anonymous Docker volumes!"
+        if confirm "Are you SURE you want to delete Docker volumes?"; then
+            prune_volumes=true
+        else
+            prune_volumes=false
+            results+=("ℹ️  Docker volumes will be preserved")
+        fi
+    fi
+
+    # Execute prune
+    if [ "$prune_volumes" = true ]; then
+        if gum spin --spinner dot --title "Running docker system prune (with volumes)..." -- \
+           docker system prune -af --volumes 2>&1 | tee /tmp/docker-prune.log >/dev/null; then
+            results+=("✅ Docker system prune completed (including volumes)")
+        else
+            results+=("⚠️  Docker system prune had issues (see /tmp/docker-prune.log)")
+        fi
+    else
+        if gum spin --spinner dot --title "Running docker system prune..." -- \
+           docker system prune -af 2>&1 | tee /tmp/docker-prune.log >/dev/null; then
+            results+=("✅ Docker system prune completed (volumes preserved)")
+        else
+            results+=("⚠️  Docker system prune had issues (see /tmp/docker-prune.log)")
+        fi
+    fi
+
+    printf "%s\n" "${results[@]}"
+}
+
+cleanup_uv() {
+    check_tool uv "uv" || return 0
+
+    local -a results=()
+
+    # Task 1: Clean cache
+    if gum spin --spinner dot --title "Cleaning uv cache..." -- \
+       uv cache clean 2>&1 | tee /tmp/uv-cache-clean.log >/dev/null; then
+        results+=("✅ uv cache cleaned")
+    else
+        results+=("⚠️  uv cache clean had issues (see /tmp/uv-cache-clean.log)")
+    fi
+
+    # Task 2: Upgrade all tools (optional)
+    if confirm "Upgrade all uv tools? (may take a while)"; then
+        if gum spin --spinner dot --title "Upgrading all uv tools..." -- \
+           uv tool upgrade --all 2>&1 | tee /tmp/uv-tool-upgrade.log >/dev/null; then
+            results+=("✅ All uv tools upgraded")
+        else
+            results+=("⚠️  uv tool upgrade had issues (see /tmp/uv-tool-upgrade.log)")
+        fi
+    else
+        results+=("⏭️  Skipped uv tool upgrade")
+    fi
+
+    printf "%s\n" "${results[@]}"
+}
+
+# ---- Main function ---------------------------------------------------------
+
+main() {
+    # Check for gum dependency (required)
+    need gum
+
+    # Show welcome banner
+    gum style --border double --padding "1 2" --align center \
+        "System Cleanup Utility" \
+        "" \
+        "Homebrew • Docker • uv"
+    echo
+
+    # Show what will be cleaned
+    gum format <<'EOF'
+# Cleanup Tasks
+
+- **Homebrew**: cleanup, autoremove, (optional) doctor
+- **Docker**: system prune (optional: volumes)
+- **uv**: cache clean, (optional) tool upgrades
+
+EOF
+
+    if ! confirm "Proceed with cleanup?"; then
+        gum style --foreground 3 "Cleanup cancelled"
+        exit 0
+    fi
+
+    echo
+
+    # Collect results from all cleanups
+    local -a all_results=()
+
+    # Run Homebrew cleanup
+    if check_tool brew "Homebrew" 2>/dev/null; then
+        gum style --foreground 4 --bold "=== Homebrew Cleanup ==="
+        echo
+        while IFS= read -r line; do
+            all_results+=("$line")
+        done < <(cleanup_homebrew)
+        echo
+    fi
+
+    # Run Docker cleanup
+    if check_tool docker "Docker" 2>/dev/null; then
+        gum style --foreground 4 --bold "=== Docker Cleanup ==="
+        echo
+        while IFS= read -r line; do
+            all_results+=("$line")
+        done < <(cleanup_docker)
+        echo
+    fi
+
+    # Run uv cleanup
+    if check_tool uv "uv" 2>/dev/null; then
+        gum style --foreground 4 --bold "=== UV Cleanup ==="
+        echo
+        while IFS= read -r line; do
+            all_results+=("$line")
+        done < <(cleanup_uv)
+        echo
+    fi
+
+    # Check if any tools were available
+    if [ ${#all_results[@]} -eq 0 ]; then
+        warn "No cleanup tools (brew, docker, uv) are available!"
+        exit 1
+    fi
+
+    # Final summary
+    gum style --border rounded --padding "1 2" --foreground 2 \
+        "Cleanup Complete!" \
+        "" \
+        "$(printf "%s\n" "${all_results[@]}")" \
+        "" \
+        "---" \
+        "" \
+        "Logs: /tmp/{brew,docker,uv}-*.log"
+}
+
+# ---- Argument parsing ------------------------------------------------------
+
+case "${1:-}" in
+    -h|--help|help)
+        usage
+        exit 0
+        ;;
+    *)
+        main "$@"
+        ;;
+esac
