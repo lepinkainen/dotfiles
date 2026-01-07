@@ -17,7 +17,7 @@ if test -d "$HOME/.local/bin/"
 end
 
 # homebrew
-if test -d "/opt/homebrew/bin/"
+if test -d /opt/homebrew/bin/
     set -gx fish_user_paths /opt/homebrew/bin/ $fish_user_paths
 end
 
@@ -37,12 +37,12 @@ if test -d "$HOME/.emacs.d/bin/"
 end
 
 # Sqlite
-if test -d "/usr/local/opt/sqlite/bin"
-    set -gx fish_user_paths "/usr/local/opt/sqlite/bin" $fish_user_paths
+if test -d /usr/local/opt/sqlite/bin
+    set -gx fish_user_paths /usr/local/opt/sqlite/bin $fish_user_paths
 end
 
 # Open vscode editor in a new window and wait for the file to be saved
-if test -e "/usr/local/bin/code"
+if test -e /usr/local/bin/code
     set -U EDITOR code -nw
 else
     set -U EDITOR nano
@@ -78,7 +78,7 @@ if status --is-interactive
     if type -q kubectl
         kubectl completion fish | source
     end
-    
+
     # Initialize zoxide (better cd command) if available
     if type -q zoxide
         zoxide init fish | source
@@ -109,33 +109,33 @@ set -gx GPG_TTY (tty)
 
 # Eza is an ls replacement. Exa is deprecated
 if type -q eza
-  alias ls "eza --time-style long-iso --icons --no-quotes --git --header"
+    alias ls "eza --time-style long-iso --icons --no-quotes --git --header"
 end
 
 # Bat is a fancier cat
 if type -q bat
-  alias cat bat
+    alias cat bat
 end
 
 # Bat is named batcat on ubuntu/debian, because of reasons
 if type -q batcat
-  alias cat batcat
+    alias cat batcat
 end
 
 # fd is a better find
 if type -q fd
-  alias find fd
+    alias find fd
 end
 
 # ripgrep is a better grep
 if type -q rg
-  alias grep rg
+    alias grep rg
 end
 
 # btop is a better top
 if type -q btop
-  alias top btop
-  alias htop btop
+    alias top btop
+    alias htop btop
 end
 
 # automatic env variables when entering directories
@@ -151,7 +151,7 @@ end
 
 # Use starship prompt if installed
 if type -q starship
-  starship init fish | source
+    starship init fish | source
 end
 
 # connect to a single named tmux session at all times
@@ -161,18 +161,18 @@ end
 
 # Kubernetes shortcuts if kubectl is available
 if type -q kubectl
-  alias k kubectl
+    alias k kubectl
 end
 
 # Open yazi in the current directory
 # Set the working directory from yazi
 function y
-	set tmp (mktemp -t "yazi-cwd.XXXXXX")
-	yazi $argv --cwd-file="$tmp"
-	if read -z cwd < "$tmp"; and [ -n "$cwd" ]; and [ "$cwd" != "$PWD" ]
-		builtin cd -- "$cwd"
-	end
-	rm -f -- "$tmp"
+    set tmp (mktemp -t "yazi-cwd.XXXXXX")
+    yazi $argv --cwd-file="$tmp"
+    if read -z cwd <"$tmp"; and [ -n "$cwd" ]; and [ "$cwd" != "$PWD" ]
+        builtin cd -- "$cwd"
+    end
+    rm -f -- "$tmp"
 end
 
 function load_1password_secrets
@@ -180,13 +180,13 @@ function load_1password_secrets
     if not command -q op
         return 1
     end
-    
+
     # Check if we're signed in (this command will fail if not)
     if not op vault list &>/dev/null
         echo "Please unlock 1Password app first" >&2
         return 1
     end
-    
+
     # Load API keys from 1Password
     set -gx OPENAI_API_KEY (op read "op://Development/OpenAI API/credential" 2>/dev/null)
     set -gx ANTHROPIC_API_KEY (op read "op://Development/Anthropic API/credential" 2>/dev/null)

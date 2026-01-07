@@ -73,7 +73,7 @@ resize-overlay-duration = 1s
 keybind = shift+enter=text:\x1b\r
 
 # copy terminfo on ssh conneection, set TERM if failed
-shell-integration-features = ssh-terminfo,ssh-env
+shell-integration-features = ssh-env
 
 # 50MB
 scrollback-limit = 52428800
