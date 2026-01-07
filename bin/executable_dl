@@ -1,0 +1,196 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "yt-dlp",
+#     "gallery-dl",
+#     "rich",
+# ]
+# ///
+"""
+Unified download tool for web content.
+
+Uses yt-dlp as the primary downloader (video/audio), with gallery-dl
+as a fallback for image galleries and sites yt-dlp doesn't support.
+
+Both tools respect their default configuration files:
+- yt-dlp: ~/.config/yt-dlp/config
+- gallery-dl: ~/.config/gallery-dl/config.json
+
+Usage:
+    dl <url>
+
+Examples:
+    dl https://youtube.com/watch?v=...
+    dl https://twitter.com/user/status/123
+    dl https://www.pixiv.net/artworks/12345
+"""
+
+import shlex
+import sys
+from pathlib import Path
+
+import yt_dlp
+from gallery_dl import config as gdl_config
+from gallery_dl import job as gdl_job
+from rich.console import Console
+
+
+def load_yt_dlp_opts() -> dict:
+    """
+    Load yt-dlp options from the default config file.
+
+    Returns the options dict suitable for YoutubeDL().
+    """
+    config_paths = [
+        Path.home() / ".config" / "yt-dlp" / "config",
+        Path.home() / ".config" / "yt-dlp.conf",
+        Path.home() / "yt-dlp.conf",
+    ]
+
+    cli_args = []
+    for config_path in config_paths:
+        if config_path.exists():
+            with open(config_path) as f:
+                for line in f:
+                    line = line.strip()
+                    # Skip empty lines and comments
+                    if not line or line.startswith("#"):
+                        continue
+                    # Parse the line as shell arguments
+                    cli_args.extend(shlex.split(line))
+            break
+
+    # Use yt-dlp's parser to convert CLI args to library options
+    if cli_args:
+        parsed = yt_dlp.parse_options(cli_args)
+        return parsed.ydl_opts
+
+    # Default options if no config file
+    return {
+        "outtmpl": str(Path.home() / "Downloads" / "%(title)s.%(ext)s"),
+    }
+
+
+def download_with_yt_dlp(url: str, opts: dict) -> tuple[bool, str | None]:
+    """
+    Attempt to download using yt-dlp.
+
+    Returns:
+        tuple[bool, str | None]: (success, error_message)
+    """
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.download([url])
+        return True, None
+    except yt_dlp.utils.DownloadError as e:
+        return False, str(e)
+    except yt_dlp.utils.ExtractorError as e:
+        return False, str(e)
+    except Exception as e:
+        return False, f"{type(e).__name__}: {e}"
+
+
+def download_with_gallery_dl(url: str) -> tuple[bool, str | None]:
+    """
+    Attempt to download using gallery-dl.
+
+    Returns:
+        tuple[bool, str | None]: (success, error_message)
+    """
+    try:
+        # Load default config files
+        gdl_config.load()
+
+        # Set base directory if not configured
+        if not gdl_config.get((), "base-directory"):
+            gdl_config.set((), "base-directory", str(Path.home() / "Downloads"))
+
+        # Run the download job
+        download_job = gdl_job.DownloadJob(url)
+        status = download_job.run()
+
+        # Status 0 = success, non-zero = failure
+        if status == 0:
+            return True, None
+        else:
+            return False, f"gallery-dl returned status {status}"
+
+    except Exception as e:
+        return False, f"{type(e).__name__}: {e}"
+
+
+def format_error(tool: str, error: str) -> str:
+    """Format an error message with hints for common issues."""
+    hints = []
+
+    error_lower = error.lower()
+
+    if "403" in error or "forbidden" in error_lower:
+        hints.append("The server returned 403 Forbidden - may require authentication or cookies")
+    elif "404" in error or "not found" in error_lower:
+        hints.append("Content not found - check if the URL is correct or if content was deleted")
+    elif "401" in error or "unauthorized" in error_lower:
+        hints.append("Authentication required - you may need to provide cookies or credentials")
+    elif "429" in error or "rate" in error_lower:
+        hints.append("Rate limited - wait a while before trying again")
+    elif "geo" in error_lower or "country" in error_lower:
+        hints.append("Content may be geo-blocked in your region")
+    elif "private" in error_lower:
+        hints.append("Content is private - may require authentication")
+    elif "age" in error_lower or "sign in" in error_lower:
+        hints.append("Age-restricted content - may require authentication")
+
+    result = f"[{tool}] {error}"
+    if hints:
+        result += "\n  Hint: " + "; ".join(hints)
+
+    return result
+
+
+def main():
+    """Main entry point for the CLI."""
+    err_console = Console(stderr=True, width=100)
+
+    if len(sys.argv) < 2:
+        err_console.print("[red]usage:[/red] dl <url>")
+        err_console.print("\n[yellow]Examples:[/yellow]")
+        err_console.print("  dl https://youtube.com/watch?v=...")
+        err_console.print("  dl https://twitter.com/user/status/123")
+        err_console.print("  dl https://www.pixiv.net/artworks/12345")
+        sys.exit(1)
+
+    url = sys.argv[1]
+
+    # Load yt-dlp config
+    yt_dlp_opts = load_yt_dlp_opts()
+
+    # Try yt-dlp first
+    success, yt_dlp_error = download_with_yt_dlp(url, yt_dlp_opts)
+    if success:
+        sys.exit(0)
+
+    # Fall back to gallery-dl
+    success, gallery_dl_error = download_with_gallery_dl(url)
+    if success:
+        sys.exit(0)
+
+    # Both failed - show informative errors
+    err_console.print("\n[red]Download failed with both tools:[/red]\n")
+    err_console.print(format_error("yt-dlp", yt_dlp_error))
+    err_console.print()
+    err_console.print(format_error("gallery-dl", gallery_dl_error))
+    err_console.print()
+
+    # Suggest alternatives
+    err_console.print("[yellow]Suggestions:[/yellow]")
+    err_console.print("  - Check if the URL is correct and accessible")
+    err_console.print("  - Try running yt-dlp or gallery-dl directly for more verbose output:")
+    err_console.print(f"    yt-dlp -v '{url}'")
+    err_console.print(f"    gallery-dl -v '{url}'")
+
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

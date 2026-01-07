@@ -112,15 +112,15 @@ def build_fragment_arg(content_type: str, url: str) -> str:
 def main():
     """Main entry point for the CLI."""
     console = Console(width=100)
+    err_console = Console(stderr=True, width=100)
 
     if len(sys.argv) < 2:
-        console.print("[red]usage:[/red] q <url> [question]", file=sys.stderr)
-        console.print("\n[yellow]Examples:[/yellow]", file=sys.stderr)
-        console.print("  q https://youtube.com/watch?v=...", file=sys.stderr)
-        console.print("  q https://news.ycombinator.com/item?id=123456", file=sys.stderr)
-        console.print(
-            "  q https://example.com/article 'What are the main points?'",
-            file=sys.stderr,
+        err_console.print("[red]usage:[/red] q <url> [question]")
+        err_console.print("\n[yellow]Examples:[/yellow]")
+        err_console.print("  q https://youtube.com/watch?v=...")
+        err_console.print("  q https://news.ycombinator.com/item?id=123456")
+        err_console.print(
+            "  q https://example.com/article 'What are the main points?'"
         )
         sys.exit(1)
 
@@ -163,13 +163,11 @@ def main():
 
         # Get the appropriate loader
         if fragment_type not in loaders:
-            console.print(
-                f"[red]Error:[/red] Fragment loader '{fragment_type}' not found",
-                file=sys.stderr
+            err_console.print(
+                f"[red]Error:[/red] Fragment loader '{fragment_type}' not found"
             )
-            console.print(
-                f"Available loaders: {', '.join(loaders.keys())}",
-                file=sys.stderr
+            err_console.print(
+                f"Available loaders: {', '.join(loaders.keys())}"
             )
             sys.exit(1)
 
@@ -196,13 +194,20 @@ def main():
         console.print()  # Final newline
 
     except ValueError as e:
-        console.print(f"[red]Error:[/red] {e}", file=sys.stderr)
+        error_msg = str(e)
+        # Provide friendlier messages for common HTTP errors
+        if ": 451" in error_msg:
+            err_console.print(
+                "[red]Error:[/red] Content unavailable (HTTP 451 - blocked for legal reasons)"
+            )
+        else:
+            err_console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
     except KeyboardInterrupt:
-        console.print("\n[yellow]Interrupted[/yellow]", file=sys.stderr)
+        err_console.print("\n[yellow]Interrupted[/yellow]")
         sys.exit(130)
     except Exception as e:
-        console.print(f"[red]Error:[/red] {e}", file=sys.stderr)
+        err_console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
 
 
