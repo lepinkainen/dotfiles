@@ -70,10 +70,11 @@ background-opacity = 0.95
 resize-overlay = always
 resize-overlay-duration = 1s
 
-keybind = shift+enter=text:\x1b\r
-
 # copy terminfo on ssh conneection, set TERM if failed
 shell-integration-features = ssh-env
 
 # 50MB
 scrollback-limit = 52428800
+
+# shift-enter = newline in claude
+#keybind = shift+enter=text:\x1b\r
