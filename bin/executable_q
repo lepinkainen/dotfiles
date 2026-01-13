@@ -58,8 +58,12 @@ def detect_content_type(url: str) -> tuple[str, str]:
     Returns:
         tuple[str, str]: (fragment_type, default_prompt)
     """
-    # YouTube
+    # YouTube and other video platforms supported by yt-dlp
     if "youtube.com" in url or "youtu.be" in url:
+        return ("youtube", YOUTUBE_PROMPT)
+
+    # TikTok (also uses yt-dlp via youtube fragment)
+    if "tiktok.com" in url:
         return ("youtube", YOUTUBE_PROMPT)
 
     # Hacker News
@@ -138,12 +142,16 @@ def main():
         fragment_arg = build_fragment_arg(content_type, url)
 
         # Show what we're processing
-        content_type_label = {
-            "youtube": "🎥 YouTube",
-            "hn": "🗨️  Hacker News",
-            "github": "🐙 GitHub",
-            "reader": "📄 Article"
-        }.get(content_type, content_type)
+        # Determine display label based on URL, not just content_type
+        if "tiktok.com" in url:
+            content_type_label = "🎥 TikTok"
+        else:
+            content_type_label = {
+                "youtube": "🎥 YouTube",
+                "hn": "🗨️  Hacker News",
+                "github": "🐙 GitHub",
+                "reader": "📄 Article"
+            }.get(content_type, content_type)
 
         console.print(Panel(
             f"[cyan]{url}[/cyan]",
