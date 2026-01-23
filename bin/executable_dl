@@ -32,6 +32,7 @@ from pathlib import Path
 
 import yt_dlp
 from gallery_dl import config as gdl_config
+from gallery_dl import extractor as gdl_extractor
 from gallery_dl import job as gdl_job
 from rich.console import Console
 
@@ -102,10 +103,6 @@ def download_with_gallery_dl(url: str) -> tuple[bool, str | None]:
         # Load default config files
         gdl_config.load()
 
-        # Set base directory if not configured
-        if not gdl_config.get((), "base-directory"):
-            gdl_config.set((), "base-directory", str(Path.home() / "Downloads"))
-
         # Run the download job
         download_job = gdl_job.DownloadJob(url)
         status = download_job.run()
@@ -162,32 +159,26 @@ def main():
 
     url = sys.argv[1]
 
-    # Load yt-dlp config
-    yt_dlp_opts = load_yt_dlp_opts()
+    # Use gallery-dl if it has an extractor for this URL, otherwise yt-dlp
+    if gdl_extractor.find(url) is not None:
+        success, error = download_with_gallery_dl(url)
+        tool = "gallery-dl"
+    else:
+        yt_dlp_opts = load_yt_dlp_opts()
+        success, error = download_with_yt_dlp(url, yt_dlp_opts)
+        tool = "yt-dlp"
 
-    # Try yt-dlp first
-    success, yt_dlp_error = download_with_yt_dlp(url, yt_dlp_opts)
     if success:
         sys.exit(0)
 
-    # Fall back to gallery-dl
-    success, gallery_dl_error = download_with_gallery_dl(url)
-    if success:
-        sys.exit(0)
-
-    # Both failed - show informative errors
-    err_console.print("\n[red]Download failed with both tools:[/red]\n")
-    err_console.print(format_error("yt-dlp", yt_dlp_error))
-    err_console.print()
-    err_console.print(format_error("gallery-dl", gallery_dl_error))
-    err_console.print()
+    # Download failed
+    err_console.print(f"\n{format_error(tool, error)}\n")
 
     # Suggest alternatives
     err_console.print("[yellow]Suggestions:[/yellow]")
     err_console.print("  - Check if the URL is correct and accessible")
-    err_console.print("  - Try running yt-dlp or gallery-dl directly for more verbose output:")
-    err_console.print(f"    yt-dlp -v '{url}'")
-    err_console.print(f"    gallery-dl -v '{url}'")
+    err_console.print(f"  - Try running {tool} directly for more verbose output:")
+    err_console.print(f"    {tool} -v '{url}'")
 
     sys.exit(1)
 
