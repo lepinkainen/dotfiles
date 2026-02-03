@@ -3,6 +3,8 @@ sandbox_mode    = "workspace-write"
 approval_policy = "on-failure"   # prompts only when a command fails
 model = "gpt-5.2-codex"
 model_reasoning_effort = "high"
+personality = "pragmatic"
+web_search = "live"
 
 # allow outbound network for commands executed in the sandbox
 [sandbox_workspace_write]
@@ -10,10 +12,6 @@ network_access = true
 
 # Optional: if you want prompts only for “untrusted” commands instead:
 # approval_policy = "untrusted"
-
-# Enable codex web search capability
-[features]
-web_search_request = true
 
 [projects."/Users/shrike/projects/"]
 trust_level = "trusted"
