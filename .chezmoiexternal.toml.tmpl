@@ -20,4 +20,18 @@
     [".fzf".clone]
         args = ["--depth", "1"]
     [".fzf".pull]
-        args = ["--ff-only"] 
+        args = ["--ff-only"]
+
+{{ if eq .chezmoi.os "darwin" }}
+# JetBrains Mono Nerd Font for macOS
+["Library/Fonts/JetBrainsMono"]
+    type = "archive"
+    url = "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/JetBrainsMono.tar.xz"
+    refreshPeriod = "720h"
+{{ else if eq .chezmoi.os "linux" }}
+# JetBrains Mono Nerd Font for Linux
+[".local/share/fonts/JetBrainsMono"]
+    type = "archive"
+    url = "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/JetBrainsMono.tar.xz"
+    refreshPeriod = "720h"
+{{ end }}

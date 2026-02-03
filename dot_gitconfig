@@ -110,3 +110,12 @@
     helper = !gh auth git-credential
 [credential "https://gist.github.com"]
     helper = !gh auth git-credential
+
+[url "git@github.com:"]
+    insteadOf = "https://github.com/"
+
+[url "git@gitlab.com:"]
+    insteadOf = "https://gitlab.com/"
+
+[url "git@bitbucket.org:"]
+    insteadOf = "https://bitbucket.org/"
