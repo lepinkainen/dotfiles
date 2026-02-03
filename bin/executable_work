@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v git >/dev/null 2>&1; then
+  echo "git not found" >&2
+  exit 1
+fi
+
+if ! command -v gum >/dev/null 2>&1; then
+  echo "gum not found (https://github.com/charmbracelet/gum)" >&2
+  exit 1
+fi
+
+continue_mode=false
+if [[ "${1:-}" == "--continue" ]]; then
+  continue_mode=true
+  shift
+fi
+
+if [[ $# -gt 0 ]]; then
+  echo "usage: $(basename "$0") [--continue]" >&2
+  exit 1
+fi
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+if [[ -z "${repo_root}" ]]; then
+  echo "not a git repo" >&2
+  exit 1
+fi
+
+project_name=$(basename "${repo_root}")
+base_dir="${HOME}/.ai-work/${project_name}"
+mkdir -p "${base_dir}"
+
+declare -a agents=(claude codex pi gemini opencode crush)
+
+declare -a installed=()
+for agent in "${agents[@]}"; do
+  if command -v "${agent}" >/dev/null 2>&1; then
+    installed+=("${agent}")
+  fi
+done
+
+if [[ ${#installed[@]} -eq 0 ]]; then
+  echo "no supported agents found in PATH" >&2
+  exit 1
+fi
+
+selected_default="claude"
+if ! command -v "${selected_default}" >/dev/null 2>&1; then
+  selected_default="${installed[0]}"
+fi
+
+detect_pr_tool() {
+  if command -v gh >/dev/null 2>&1; then
+    echo "gh"
+  elif command -v glab >/dev/null 2>&1; then
+    echo "glab"
+  else
+    return 1
+  fi
+}
+
+create_pr() {
+  local tool="$1"
+  local base="$2"
+  local branch="$3"
+  local title="$4"
+  local body="$5"
+
+  if [[ "${tool}" == "gh" ]]; then
+    gh pr create --base "${base}" --head "${branch}" --title "${title}" --body "${body}"
+  else
+    glab mr create --target-branch "${base}" --source-branch "${branch}" --title "${title}" --description "${body}"
+  fi
+}
+
+if [[ "${continue_mode}" == true ]]; then
+  mapfile -t worktrees < <(
+    git -C "${repo_root}" worktree list --porcelain |
+      awk -v base="${base_dir}/" '$1=="worktree"{path=$2; if (index(path, base)==1) print path}'
+  )
+
+  if [[ ${#worktrees[@]} -eq 0 ]]; then
+    echo "no existing worktrees in ${base_dir}" >&2
+    exit 1
+  fi
+
+  worktree_dir=$(printf "%s\n" "${worktrees[@]}" | gum choose)
+  if [[ -z "${worktree_dir}" ]]; then
+    echo "no worktree selected" >&2
+    exit 1
+  fi
+
+  branch=$(git -C "${repo_root}" worktree list --porcelain |
+    awk -v p="${worktree_dir}" '$1=="worktree"{hit=($2==p)} hit && $1=="branch"{print $2; exit}')
+  branch="${branch#refs/heads/}"
+
+  agent_default="${selected_default}"
+  if [[ -n "${branch}" && "${branch}" =~ ^ai/([^/]+)/ ]]; then
+    candidate="${BASH_REMATCH[1]}"
+    for agent in "${installed[@]}"; do
+      if [[ "${agent}" == "${candidate}" ]]; then
+        agent_default="${candidate}"
+        break
+      fi
+    done
+  fi
+
+  selected_agent=$(printf "%s\n" "${installed[@]}" | gum choose --selected "${agent_default}")
+
+  base_branch=$(git -C "${repo_root}" rev-parse --abbrev-ref HEAD)
+else
+  selected_agent=$(printf "%s\n" "${installed[@]}" | gum choose --selected "${selected_default}")
+
+  stamp=$(date +%Y%m%d-%H%M%S)
+  branch="ai/${selected_agent}/${stamp}"
+  worktree_dir="${base_dir}/${stamp}"
+
+  base_branch=$(git -C "${repo_root}" rev-parse --abbrev-ref HEAD)
+
+  git -C "${repo_root}" worktree add -b "${branch}" "${worktree_dir}"
+fi
+
+current_agent="${selected_agent}"
+
+while true; do
+  pushd "${worktree_dir}" >/dev/null
+  "${current_agent}"
+  popd >/dev/null
+
+  while [[ -n "$(git -C "${worktree_dir}" status --porcelain)" ]]; do
+    files=$(git -C "${worktree_dir}" status --porcelain | awk '{sub(/^.. /, ""); print}')
+    header=$(printf "there are uncommitted files:\n%s" "${files}")
+    action=$(printf "quit\ncommit all\nback\n" | gum choose --header "${header}" --selected "quit")
+    case "${action}" in
+      quit|"")
+        echo "worktree kept at ${worktree_dir}"
+        exit 0
+        ;;
+      "commit all")
+        commit_message=""
+        while [[ -z "${commit_message}" ]]; do
+          commit_message=$(gum input --prompt "Commit message: ")
+        done
+        git -C "${worktree_dir}" add .
+        git -C "${worktree_dir}" commit -m "${commit_message}"
+        ;;
+      back)
+        current_agent=$(printf "%s\n" "${installed[@]}" | gum choose --selected "${current_agent}")
+        continue 2
+        ;;
+    esac
+  done
+
+  break
+done
+
+if [[ -z "${branch}" ]]; then
+  echo "no branch associated with ${worktree_dir}; worktree kept"
+  exit 0
+fi
+
+action=$(printf "open pr\npush branch\nkeep worktree\n" | gum choose --selected "open pr")
+case "${action}" in
+  "open pr")
+    pr_tool=$(detect_pr_tool || true)
+    if [[ -z "${pr_tool}" ]]; then
+      echo "no PR tool found (install gh or glab)" >&2
+      exit 1
+    fi
+
+    git -C "${worktree_dir}" push -u origin "${branch}"
+
+    pr_title=$(gum input --prompt "PR title: " --value "${branch}")
+    pr_body=$(gum input --prompt "PR description: ")
+
+    create_pr "${pr_tool}" "${base_branch}" "${branch}" "${pr_title}" "${pr_body}"
+
+    if gum confirm "Remove worktree now?"; then
+      git -C "${repo_root}" worktree remove "${worktree_dir}"
+      echo "worktree removed"
+    else
+      echo "worktree kept at ${worktree_dir}"
+    fi
+    ;;
+  "push branch")
+    git -C "${worktree_dir}" push -u origin "${branch}"
+    echo "branch pushed; worktree kept at ${worktree_dir}"
+    ;;
+  "keep worktree"|"")
+    echo "worktree kept at ${worktree_dir}"
+    ;;
+esac
