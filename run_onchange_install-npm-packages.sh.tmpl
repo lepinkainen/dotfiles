@@ -1,0 +1,27 @@
+#!/bin/sh
+# npm packages hash: {{ include "npmfile" | sha256sum }}
+# This script runs when npmfile changes
+
+set -e
+
+echo "Installing global npm packages..."
+
+# Check if npm is available
+if ! command -v npm > /dev/null 2>&1; then
+    echo "npm not found, skipping npm package installation"
+    exit 0
+fi
+
+# Read packages from embedded npmfile content
+cat << 'PACKAGES' | while IFS= read -r package || [ -n "$package" ]; do
+{{ include "npmfile" -}}
+PACKAGES
+    # Skip empty lines and comments
+    case "$package" in
+        ""|\#*) continue ;;
+    esac
+    echo "Installing $package..."
+    npm install -g "$package" || echo "Warning: Failed to install $package"
+done
+
+echo "npm package installation completed!"
