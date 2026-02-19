@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
-SESSION="dev-$(basename "$PWD")"
+
+SESSION="${TMUX_SESSION:-dev-$(basename "$PWD")}"
+
 tmux new-session -A -s "$SESSION"
