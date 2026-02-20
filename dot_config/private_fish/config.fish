@@ -155,9 +155,9 @@ if type -q starship
 end
 
 # connect to a single named tmux session at all times
-if type -q tmux
-    alias tmux "tmux new-session -A -s main"
-end
+#if type -q tmux
+#    alias tmux "tmux new-session -A -s main"
+#end
 
 # Kubernetes shortcuts if kubectl is available
 if type -q kubectl
