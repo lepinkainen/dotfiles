@@ -1,0 +1,544 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "httpx",
+#     "rich",
+# ]
+# ///
+"""
+CLI weather tool — current conditions and 8-hour forecast.
+
+Uses macOS CoreLocation (via LocationCLI helper) for device positioning
+and met.no for weather data.
+
+Usage:
+    weather
+    weather --location LAT,LON
+    WEATHER_LOCATION=LAT,LON weather
+"""
+
+import json
+import os
+import subprocess
+import sys
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Protocol
+
+import httpx
+from rich.console import Console
+from rich.table import Table
+from rich.text import Text
+
+# ---------------------------------------------------------------------------
+# Data model
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class HourForecast:
+    time: datetime
+    temperature: float  # °C
+    wind_speed: float  # m/s
+    precipitation_1h: float  # mm
+    uv_index: float | None  # None if unavailable
+    symbol_code: str  # met.no symbol code
+
+
+@dataclass
+class WeatherData:
+    current: HourForecast
+    forecast: list[HourForecast]  # next 8 hours
+
+
+# ---------------------------------------------------------------------------
+# Weather provider protocol
+# ---------------------------------------------------------------------------
+
+
+class WeatherProvider(Protocol):
+    def fetch(self, lat: float, lon: float) -> WeatherData: ...
+
+
+# ---------------------------------------------------------------------------
+# met.no provider
+# ---------------------------------------------------------------------------
+
+USER_AGENT = "weather-cli/1.0 github.com/rlindblad/bin"
+
+
+class MetNoProvider:
+    """Weather provider using the met.no Locationforecast 2.0 API."""
+
+    API_URL = "https://api.met.no/weatherapi/locationforecast/2.0/complete"
+
+    def fetch(self, lat: float, lon: float) -> WeatherData:
+        resp = httpx.get(
+            self.API_URL,
+            params={"lat": f"{lat:.4f}", "lon": f"{lon:.4f}"},
+            headers={"User-Agent": USER_AGENT},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        timeseries = data["properties"]["timeseries"]
+        entries = timeseries[:9]  # current + next 8 hours
+
+        forecasts = [self._parse_entry(e) for e in entries]
+        return WeatherData(current=forecasts[0], forecast=forecasts[1:])
+
+    @staticmethod
+    def _parse_entry(entry: dict) -> HourForecast:
+        time = datetime.fromisoformat(entry["time"])
+        instant = entry["data"]["instant"]["details"]
+
+        precip = 0.0
+        for period in ("next_1_hours", "next_6_hours"):
+            if period in entry["data"]:
+                precip = entry["data"][period]["details"].get(
+                    "precipitation_amount", 0.0
+                )
+                break
+
+        symbol = "cloudy"
+        for period in ("next_1_hours", "next_6_hours"):
+            if period in entry["data"]:
+                symbol = entry["data"][period]["summary"]["symbol_code"]
+                break
+
+        return HourForecast(
+            time=time,
+            temperature=instant["air_temperature"],
+            wind_speed=instant["wind_speed"],
+            precipitation_1h=precip,
+            uv_index=instant.get("ultraviolet_index_clear_sky"),
+            symbol_code=symbol,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Location
+# ---------------------------------------------------------------------------
+
+
+LOCATION_CLI = (
+    Path(__file__).parent / "loctool" / "LocationCLI.app" / "Contents" / "MacOS" / "LocationCLI"
+)
+
+
+def _get_location_corelocation() -> tuple[float, float]:
+    """Get device location via the LocationCLI helper app."""
+    result = subprocess.run(
+        [str(LOCATION_CLI)],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    data = json.loads(result.stdout)
+    if "error" in data:
+        raise RuntimeError(data["error"])
+    return round(data["lat"], 4), round(data["lon"], 4)
+
+
+@dataclass
+class Location:
+    lat: float
+    lon: float
+    name: str  # city name or "lat, lon"
+
+
+# Known locations: (lat, lon, name). If within 2 km, use the cached name.
+KNOWN_LOCATIONS = [
+    (60.4661, 25.0893, "Järvenpää"),
+]
+
+_TOLERANCE_KM = 2.0
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Approximate distance in km between two points."""
+    from math import radians, sin, cos, sqrt, atan2
+
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    return 6371 * 2 * atan2(sqrt(a), sqrt(1 - a))
+
+
+def _lookup_known_location(lat: float, lon: float) -> str | None:
+    """Return name if coordinates are within tolerance of a known location."""
+    for klat, klon, name in KNOWN_LOCATIONS:
+        if _haversine_km(lat, lon, klat, klon) <= _TOLERANCE_KM:
+            return name
+    return None
+
+
+def _resolve_name(lat: float, lon: float) -> str:
+    """Get a place name: check known locations first, then reverse geocode."""
+    return _lookup_known_location(lat, lon) or _reverse_geocode(lat, lon) or f"{lat}, {lon}"
+
+
+def _reverse_geocode(lat: float, lon: float) -> str:
+    """Reverse geocode coordinates to a place name via Nominatim."""
+    try:
+        resp = httpx.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={"lat": lat, "lon": lon, "format": "json", "zoom": 10},
+            headers={"User-Agent": USER_AGENT},
+            timeout=5,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        addr = data.get("address", {})
+        city = addr.get("city") or addr.get("town") or addr.get("village")
+        country = addr.get("country")
+        return ", ".join(filter(None, [city, country]))
+    except Exception:
+        return ""
+
+
+def _get_location_ip() -> Location:
+    """Fallback: get approximate location via IP geolocation (ip-api.com)."""
+    resp = httpx.get(
+        "http://ip-api.com/json/",
+        params={"fields": "status,lat,lon,city,country"},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get("status") != "success":
+        raise RuntimeError("IP geolocation failed")
+    lat = round(data["lat"], 4)
+    lon = round(data["lon"], 4)
+    name = ", ".join(filter(None, [data.get("city"), data.get("country")]))
+    return Location(lat, lon, name or f"{lat}, {lon}")
+
+
+_err_console = Console(stderr=True, width=80)
+
+
+def get_location() -> Location:
+    """Resolve location from CLI args, env var, CoreLocation, or IP fallback."""
+    # --location LAT,LON
+    for i, arg in enumerate(sys.argv[1:], 1):
+        if arg == "--location" and i < len(sys.argv) - 1:
+            return _parse_latlon(sys.argv[i + 1])
+        if arg.startswith("--location="):
+            return _parse_latlon(arg.split("=", 1)[1])
+
+    # WEATHER_LOCATION env var
+    env = os.environ.get("WEATHER_LOCATION")
+    if env:
+        return _parse_latlon(env)
+
+    # Try CoreLocation, fall back to IP geolocation
+    try:
+        lat, lon = _get_location_corelocation()
+        name = _resolve_name(lat, lon)
+        return Location(lat, lon, name)
+    except (RuntimeError, TimeoutError):
+        _err_console.print(
+            "[dim]CoreLocation unavailable — enable Location Services for "
+            "your terminal in System Settings > Privacy & Security.[/dim]"
+        )
+        return _get_location_ip()
+
+
+def _parse_latlon(s: str) -> Location:
+    try:
+        lat_s, lon_s = s.split(",")
+        lat = round(float(lat_s), 4)
+        lon = round(float(lon_s), 4)
+        name = _resolve_name(lat, lon)
+        return Location(lat, lon, name)
+    except (ValueError, TypeError):
+        raise SystemExit(f"Invalid location format: {s!r} (expected LAT,LON)")
+
+
+# ---------------------------------------------------------------------------
+# Symbol code -> emoji mapping
+# ---------------------------------------------------------------------------
+
+SYMBOL_EMOJI: dict[str, str] = {
+    "clearsky": "☀️",
+    "clearsky_night": "🌙",
+    "fair": "🌤",
+    "fair_night": "🌤",
+    "partlycloudy": "⛅",
+    "partlycloudy_night": "⛅",
+    "cloudy": "☁️",
+    "fog": "🌫",
+    "lightrainshowers": "🌦",
+    "lightrainshowers_night": "🌦",
+    "rainshowers": "🌧",
+    "rainshowers_night": "🌧",
+    "heavyrainshowers": "🌧",
+    "heavyrainshowers_night": "🌧",
+    "lightrain": "🌦",
+    "rain": "🌧",
+    "heavyrain": "🌧",
+    "lightsleet": "🌨",
+    "sleet": "🌨",
+    "heavysleet": "🌨",
+    "lightsnow": "🌨",
+    "snow": "❄️",
+    "heavysnow": "❄️",
+    "lightrainandthunder": "⛈",
+    "rainandthunder": "⛈",
+    "heavyrainandthunder": "⛈",
+    "lightsleetandthunder": "⛈",
+    "sleetandthunder": "⛈",
+    "heavysleetandthunder": "⛈",
+    "lightsnowandthunder": "⛈",
+    "snowandthunder": "⛈",
+    "heavysnowandthunder": "⛈",
+    "lightrainshowersandthunder": "⛈",
+    "rainshowersandthunder": "⛈",
+    "heavyrainshowersandthunder": "⛈",
+    "lightsleetshowersandthunder": "⛈",
+    "sleetshowersandthunder": "⛈",
+    "heavysleetshowersandthunder": "⛈",
+    "lightsnowshowersandthunder": "⛈",
+    "snowshowersandthunder": "⛈",
+    "heavysnowshowersandthunder": "⛈",
+    "lightsleetshowers": "🌨",
+    "sleetshowers": "🌨",
+    "heavysleetshowers": "🌨",
+    "lightsnowshowers": "🌨",
+    "snowshowers": "❄️",
+    "heavysnowshowers": "❄️",
+}
+
+SYMBOL_NAME: dict[str, str] = {
+    "clearsky": "Clear Sky",
+    "fair": "Fair",
+    "partlycloudy": "Partly Cloudy",
+    "cloudy": "Cloudy",
+    "fog": "Fog",
+    "lightrain": "Light Rain",
+    "rain": "Rain",
+    "heavyrain": "Heavy Rain",
+    "lightrainshowers": "Light Rain Showers",
+    "rainshowers": "Rain Showers",
+    "heavyrainshowers": "Heavy Rain Showers",
+    "lightsleet": "Light Sleet",
+    "sleet": "Sleet",
+    "heavysleet": "Heavy Sleet",
+    "lightsleetshowers": "Light Sleet Showers",
+    "sleetshowers": "Sleet Showers",
+    "heavysleetshowers": "Heavy Sleet Showers",
+    "lightsnow": "Light Snow",
+    "snow": "Snow",
+    "heavysnow": "Heavy Snow",
+    "lightsnowshowers": "Light Snow Showers",
+    "snowshowers": "Snow Showers",
+    "heavysnowshowers": "Heavy Snow Showers",
+    "lightrainandthunder": "Light Rain & Thunder",
+    "rainandthunder": "Rain & Thunder",
+    "heavyrainandthunder": "Heavy Rain & Thunder",
+    "lightrainshowersandthunder": "Light Rain Showers & Thunder",
+    "rainshowersandthunder": "Rain Showers & Thunder",
+    "heavyrainshowersandthunder": "Heavy Rain Showers & Thunder",
+    "lightsleetandthunder": "Sleet & Thunder",
+    "sleetandthunder": "Sleet & Thunder",
+    "heavysleetandthunder": "Heavy Sleet & Thunder",
+    "lightsleetshowersandthunder": "Sleet Showers & Thunder",
+    "sleetshowersandthunder": "Sleet Showers & Thunder",
+    "heavysleetshowersandthunder": "Heavy Sleet Showers & Thunder",
+    "lightsnowandthunder": "Snow & Thunder",
+    "snowandthunder": "Snow & Thunder",
+    "heavysnowandthunder": "Heavy Snow & Thunder",
+    "lightsnowshowersandthunder": "Snow Showers & Thunder",
+    "snowshowersandthunder": "Snow Showers & Thunder",
+    "heavysnowshowersandthunder": "Heavy Snow Showers & Thunder",
+}
+
+
+def _base_symbol(code: str) -> str:
+    """Strip _day/_night/_polartwilight suffix."""
+    for suffix in ("_day", "_night", "_polartwilight"):
+        if code.endswith(suffix):
+            return code[: -len(suffix)]
+    return code
+
+
+def symbol_to_emoji(code: str) -> str:
+    if code in SYMBOL_EMOJI:
+        return SYMBOL_EMOJI[code]
+    base = _base_symbol(code)
+    return SYMBOL_EMOJI.get(base, "?")
+
+
+def symbol_to_name(code: str) -> str:
+    base = _base_symbol(code)
+    return SYMBOL_NAME.get(base, base.replace("_", " ").title())
+
+
+# ---------------------------------------------------------------------------
+# Color helpers
+# ---------------------------------------------------------------------------
+
+
+def temp_color(t: float) -> str:
+    if t < 0:
+        return "blue"
+    if t < 10:
+        return "cyan"
+    if t < 20:
+        return "white"
+    if t < 30:
+        return "yellow"
+    return "red"
+
+
+def wind_color(w: float) -> str:
+    if w < 5:
+        return "green"
+    if w < 10:
+        return "yellow"
+    return "red"
+
+
+def rain_color(mm: float) -> str:
+    if mm <= 0:
+        return "dim"
+    if mm < 1:
+        return "blue"
+    return "bold blue"
+
+
+# ---------------------------------------------------------------------------
+# Display
+# ---------------------------------------------------------------------------
+
+
+def render(weather: WeatherData, location: Location, console: Console) -> None:
+    c = weather.current
+
+    # Location
+    console.print(f"\n [dim]{location.name}[/dim]")
+
+    # Current conditions header
+    emoji = symbol_to_emoji(c.symbol_code)
+    name = symbol_to_name(c.symbol_code)
+    temp_styled = f"[{temp_color(c.temperature)}]{c.temperature:.0f}°C[/]"
+    console.print(f" {emoji}  {name}  {temp_styled}\n")
+
+    # UV warning (only if >= 3)
+    if c.uv_index is not None and c.uv_index >= 3:
+        uv_c = "red" if c.uv_index >= 6 else "yellow"
+        console.print(
+            f" [{uv_c}]UV {c.uv_index:.0f} — wear sunscreen![/]\n"
+        )
+
+    # 8-hour forecast table
+    hours = weather.forecast
+    if not hours:
+        return
+
+    table = Table(
+        show_header=False,
+        show_edge=False,
+        show_lines=False,
+        box=None,
+        pad_edge=False,
+        padding=(0, 1),
+        expand=False,
+    )
+
+    # Label column + one column per hour
+    table.add_column(style="dim", width=4, justify="right")
+    for _ in hours:
+        table.add_column(width=5, justify="right")
+
+    # Row 1: hours
+    table.add_row(
+        "",
+        *[Text(h.time.astimezone().strftime("%H"), style="bold") for h in hours],
+    )
+
+    # Row 2: weather emoji
+    table.add_row("", *[symbol_to_emoji(h.symbol_code) for h in hours])
+
+    # Row 3: temperature
+    table.add_row(
+        Text("°C", style="dim"),
+        *[
+            Text(f"{h.temperature:.0f}", style=temp_color(h.temperature))
+            for h in hours
+        ],
+    )
+
+    # Row 4: wind
+    table.add_row(
+        Text("m/s", style="dim"),
+        *[
+            Text(f"{h.wind_speed:.0f}", style=wind_color(h.wind_speed))
+            for h in hours
+        ],
+    )
+
+    # Row 5: rain
+    table.add_row(
+        Text("mm", style="dim"),
+        *[
+            Text(
+                f"{h.precipitation_1h:.1f}" if h.precipitation_1h > 0 else "",
+                style=rain_color(h.precipitation_1h),
+            )
+            for h in hours
+        ],
+    )
+
+    console.print(table)
+    console.print()
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:
+    console = Console(stderr=True, width=80)
+
+    if "--help" in sys.argv or "-h" in sys.argv:
+        console.print("[bold]weather[/] — current conditions and 8-hour forecast\n")
+        console.print("Usage:")
+        console.print("  weather")
+        console.print("  weather --location LAT,LON")
+        console.print("  WEATHER_LOCATION=LAT,LON weather\n")
+        console.print(
+            "Location is resolved via macOS CoreLocation by default.\n"
+            "Ensure your terminal has Location Services enabled in\n"
+            "System Settings > Privacy & Security > Location Services."
+        )
+        sys.exit(0)
+
+    try:
+        location = get_location()
+    except Exception as e:
+        console.print(f"\n[red]Location error:[/] {e}")
+        console.print("[yellow]Tip:[/] use --location LAT,LON to set manually\n")
+        sys.exit(1)
+
+    try:
+        provider: WeatherProvider = MetNoProvider()
+        weather = provider.fetch(location.lat, location.lon)
+    except httpx.HTTPStatusError as e:
+        console.print(f"\n[red]API error:[/] {e.response.status_code} {e.response.reason_phrase}")
+        sys.exit(1)
+    except httpx.RequestError as e:
+        console.print(f"\n[red]Network error:[/] {e}")
+        console.print("[yellow]Tip:[/] check your internet connection\n")
+        sys.exit(1)
+
+    render(weather, location, console)
+
+
+if __name__ == "__main__":
+    main()
