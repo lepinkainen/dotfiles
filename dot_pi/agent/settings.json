@@ -1,5 +1,13 @@
 {
-  "lastChangelogVersion": "0.51.0",
-  "defaultProvider": "anthropic",
-  "defaultModel": "claude-opus-4-5"
+  "lastChangelogVersion": "0.55.3",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.3-codex",
+  "enabledModels": [
+    "anthropic/claude-sonnet-4-5",
+    "anthropic/claude-opus-4-5",
+    "zai/glm-4.7",
+    "openai-codex/gpt-5.3-codex",
+    "zai/glm-5"
+  ],
+  "theme": "dark"
 }

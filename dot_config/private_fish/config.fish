@@ -58,7 +58,7 @@ end
 
 # Run on exit
 function on_exit --on-process %self
-    echo fish is now exiting
+    #echo fish is now exiting
 end
 
 # Run for SSH login shells

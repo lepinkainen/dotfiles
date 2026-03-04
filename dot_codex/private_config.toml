@@ -1,8 +1,8 @@
 # Typical “run tests without babysitting” setup:
 sandbox_mode    = "workspace-write"
 approval_policy = "on-failure"   # prompts only when a command fails
-model = "gpt-5.2-codex"
-model_reasoning_effort = "high"
+model = "gpt-5-codex"
+model_reasoning_effort = "medium"
 personality = "pragmatic"
 web_search = "live"
 
