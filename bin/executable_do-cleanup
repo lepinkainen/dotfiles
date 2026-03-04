@@ -30,6 +30,13 @@ confirm() {
     gum confirm --affirmative "Yes" --negative "No" "$@"
 }
 
+add_result() {
+    ALL_RESULTS+=("$1")
+}
+
+# Global summary results
+ALL_RESULTS=()
+
 check_tool() {
     local tool="$1"
     local name="${2:-$tool}"
@@ -68,7 +75,7 @@ Cleanup Tasks:
 Features:
   - Interactive confirmations for destructive operations
   - Graceful handling of missing tools
-  - Progress spinners for long operations
+  - Live command output while tasks run
   - Detailed summary of completed tasks
   - Logs saved to /tmp/ for troubleshooting
 
@@ -87,37 +94,36 @@ EOF
 cleanup_homebrew() {
     check_tool brew "Homebrew" || return 0
 
-    local -a results=()
-
     # Task 1: brew cleanup
-    if gum spin --spinner dot --title "Running brew cleanup..." -- \
-       brew cleanup 2>&1 | tee /tmp/brew-cleanup.log >/dev/null; then
-        results+=("✅ brew cleanup completed")
+    note "→ Running: brew cleanup"
+    if brew cleanup 2>&1 | tee /tmp/brew-cleanup.log; then
+        add_result "✅ brew cleanup completed"
     else
-        results+=("⚠️  brew cleanup had issues (see /tmp/brew-cleanup.log)")
+        add_result "⚠️  brew cleanup had issues (see /tmp/brew-cleanup.log)"
     fi
+    echo
 
     # Task 2: brew autoremove
-    if gum spin --spinner dot --title "Running brew autoremove..." -- \
-       brew autoremove 2>&1 | tee /tmp/brew-autoremove.log >/dev/null; then
-        results+=("✅ brew autoremove completed")
+    note "→ Running: brew autoremove"
+    if brew autoremove 2>&1 | tee /tmp/brew-autoremove.log; then
+        add_result "✅ brew autoremove completed"
     else
-        results+=("⚠️  brew autoremove had issues (see /tmp/brew-autoremove.log)")
+        add_result "⚠️  brew autoremove had issues (see /tmp/brew-autoremove.log)"
     fi
+    echo
 
     # Task 3: brew doctor (optional)
     if confirm "Run 'brew doctor' for diagnostics?"; then
-        if gum spin --spinner dot --title "Running brew doctor..." -- \
-           brew doctor 2>&1 | tee /tmp/brew-doctor.log >/dev/null; then
-            results+=("✅ brew doctor completed (see /tmp/brew-doctor.log)")
+        note "→ Running: brew doctor"
+        if brew doctor 2>&1 | tee /tmp/brew-doctor.log; then
+            add_result "✅ brew doctor completed (see /tmp/brew-doctor.log)"
         else
-            results+=("⚠️  brew doctor found issues (see /tmp/brew-doctor.log)")
+            add_result "⚠️  brew doctor found issues (see /tmp/brew-doctor.log)"
         fi
+        echo
     else
-        results+=("⏭️  Skipped brew doctor")
+        add_result "⏭️  Skipped brew doctor"
     fi
-
-    printf "%s\n" "${results[@]}"
 }
 
 cleanup_docker() {
@@ -126,11 +132,9 @@ cleanup_docker() {
     # Check if Docker daemon is running
     if ! docker info >/dev/null 2>&1; then
         warn "Docker daemon is not running (skipping)"
-        echo "⏭️  Docker cleanup skipped (daemon not running)"
+        add_result "⏭️  Docker cleanup skipped (daemon not running)"
         return 0
     fi
-
-    local -a results=()
 
     # Show what will be pruned
     gum style --border rounded --padding "1 2" --foreground 3 \
@@ -151,56 +155,54 @@ cleanup_docker() {
             prune_volumes=true
         else
             prune_volumes=false
-            results+=("ℹ️  Docker volumes will be preserved")
+            add_result "ℹ️  Docker volumes will be preserved"
         fi
     fi
 
     # Execute prune
     if [ "$prune_volumes" = true ]; then
-        if gum spin --spinner dot --title "Running docker system prune (with volumes)..." -- \
-           docker system prune -af --volumes 2>&1 | tee /tmp/docker-prune.log >/dev/null; then
-            results+=("✅ Docker system prune completed (including volumes)")
+        note "→ Running: docker system prune -af --volumes"
+        if docker system prune -af --volumes 2>&1 | tee /tmp/docker-prune.log; then
+            add_result "✅ Docker system prune completed (including volumes)"
         else
-            results+=("⚠️  Docker system prune had issues (see /tmp/docker-prune.log)")
+            add_result "⚠️  Docker system prune had issues (see /tmp/docker-prune.log)"
         fi
     else
-        if gum spin --spinner dot --title "Running docker system prune..." -- \
-           docker system prune -af 2>&1 | tee /tmp/docker-prune.log >/dev/null; then
-            results+=("✅ Docker system prune completed (volumes preserved)")
+        note "→ Running: docker system prune -af"
+        if docker system prune -af 2>&1 | tee /tmp/docker-prune.log; then
+            add_result "✅ Docker system prune completed (volumes preserved)"
         else
-            results+=("⚠️  Docker system prune had issues (see /tmp/docker-prune.log)")
+            add_result "⚠️  Docker system prune had issues (see /tmp/docker-prune.log)"
         fi
     fi
 
-    printf "%s\n" "${results[@]}"
+    echo
 }
 
 cleanup_uv() {
     check_tool uv "uv" || return 0
 
-    local -a results=()
-
     # Task 1: Clean cache
-    if gum spin --spinner dot --title "Cleaning uv cache..." -- \
-       uv cache clean 2>&1 | tee /tmp/uv-cache-clean.log >/dev/null; then
-        results+=("✅ uv cache cleaned")
+    note "→ Running: uv cache clean"
+    if uv cache clean 2>&1 | tee /tmp/uv-cache-clean.log; then
+        add_result "✅ uv cache cleaned"
     else
-        results+=("⚠️  uv cache clean had issues (see /tmp/uv-cache-clean.log)")
+        add_result "⚠️  uv cache clean had issues (see /tmp/uv-cache-clean.log)"
     fi
+    echo
 
     # Task 2: Upgrade all tools (optional)
     if confirm "Upgrade all uv tools? (may take a while)"; then
-        if gum spin --spinner dot --title "Upgrading all uv tools..." -- \
-           uv tool upgrade --all 2>&1 | tee /tmp/uv-tool-upgrade.log >/dev/null; then
-            results+=("✅ All uv tools upgraded")
+        note "→ Running: uv tool upgrade --all"
+        if uv tool upgrade --all 2>&1 | tee /tmp/uv-tool-upgrade.log; then
+            add_result "✅ All uv tools upgraded"
         else
-            results+=("⚠️  uv tool upgrade had issues (see /tmp/uv-tool-upgrade.log)")
+            add_result "⚠️  uv tool upgrade had issues (see /tmp/uv-tool-upgrade.log)"
         fi
+        echo
     else
-        results+=("⏭️  Skipped uv tool upgrade")
+        add_result "⏭️  Skipped uv tool upgrade"
     fi
-
-    printf "%s\n" "${results[@]}"
 }
 
 # ---- Main function ---------------------------------------------------------
@@ -233,16 +235,14 @@ EOF
 
     echo
 
-    # Collect results from all cleanups
-    local -a all_results=()
+    # Reset global results for this run
+    ALL_RESULTS=()
 
     # Run Homebrew cleanup
     if check_tool brew "Homebrew" 2>/dev/null; then
         gum style --foreground 4 --bold "=== Homebrew Cleanup ==="
         echo
-        while IFS= read -r line; do
-            all_results+=("$line")
-        done < <(cleanup_homebrew)
+        cleanup_homebrew
         echo
     fi
 
@@ -250,9 +250,7 @@ EOF
     if check_tool docker "Docker" 2>/dev/null; then
         gum style --foreground 4 --bold "=== Docker Cleanup ==="
         echo
-        while IFS= read -r line; do
-            all_results+=("$line")
-        done < <(cleanup_docker)
+        cleanup_docker
         echo
     fi
 
@@ -260,14 +258,12 @@ EOF
     if check_tool uv "uv" 2>/dev/null; then
         gum style --foreground 4 --bold "=== UV Cleanup ==="
         echo
-        while IFS= read -r line; do
-            all_results+=("$line")
-        done < <(cleanup_uv)
+        cleanup_uv
         echo
     fi
 
     # Check if any tools were available
-    if [ ${#all_results[@]} -eq 0 ]; then
+    if [ ${#ALL_RESULTS[@]} -eq 0 ]; then
         warn "No cleanup tools (brew, docker, uv) are available!"
         exit 1
     fi
@@ -276,7 +272,7 @@ EOF
     gum style --border rounded --padding "1 2" --foreground 2 \
         "Cleanup Complete!" \
         "" \
-        "$(printf "%s\n" "${all_results[@]}")" \
+        "$(printf "%s\n" "${ALL_RESULTS[@]}")" \
         "" \
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" \
         "" \
