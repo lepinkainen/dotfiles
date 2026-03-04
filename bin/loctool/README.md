@@ -49,6 +49,7 @@ codesign --force --sign - "$APP"
 
 ```sh
 cd loctool
+mkdir -p LocationCLI.app/Contents/MacOS
 swiftc main.swift -o LocationCLI.app/Contents/MacOS/LocationCLI
 codesign --force --sign - LocationCLI.app
 ```
