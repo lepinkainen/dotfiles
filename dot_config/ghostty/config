@@ -1,75 +1,46 @@
-# Run `ghostty +show-config --default --docs` to view a list of
+# This is the configuration file for Ghostty.
 
-# all available config options and their default values
+# Theme stuff
+theme = Flexoki Dark
 
 font-family = Fira Code
 font-size = 13
-
-background = #100F0F
-foreground = #CECDC3
-
-# resize-overlay-duration = 4s 200ms
-
-theme = Flexoki Dark
-
-# Font options - enable ligatures for Fira Code
-
 font-feature = +calt,+liga
-
-# Better font rendering on macOS
-
+# Makes the font less thin and more readable
 font-thicken = true
 
-# Window decoration
+# Cooler icon
+macos-icon = retro
 
-window-decoration = true
+# tabs in the titlebar
 macos-titlebar-style = tabs
 
-# Window padding for breathing room
-
-window-padding-x = 4
-window-padding-y = 4
+# Visual effects
+unfocused-split-opacity = 0.8
+background-opacity = 0.95
+background-blur = true
 
 # Shell integration enables features like jump-to-prompt, command completion markers
-
 shell-integration = detect
+# copy terminfo on ssh conneection, set TERM if failed
+shell-integration-features = ssh-env,title
 
-# Clipboard settings
-
+# Clipboard stuff
 clipboard-read = allow
 clipboard-write = allow
 copy-on-select = true
 clipboard-trim-trailing-spaces = true
 
-# Productivity settings
-
-scrollback-limit = 100000
+# Scrolling
+scrollback-limit = 52428800
 mouse-hide-while-typing = true
 confirm-close-surface = true
+
 auto-update = check
+# both option keys are option keys
+macos-option-as-alt = false
+
+# New tabs and windows start in home
 window-step-resize = true
-
-# Visual effects
-
-unfocused-split-opacity = 0.8
-background-blur-radius = 20
-background-opacity = 0.95
-resize-overlay = always
-resize-overlay-duration = 1s
-
-# copy terminfo on ssh conneection, set TERM if failed
-
-shell-integration-features = ssh-env
-
-# 50MB
-
-scrollback-limit = 52428800
-
-# shift-enter = newline in claude
-
-keybind = shift+enter=text:\x1b\r
-
-# Always start new tabs/windows in HOME
-
 window-inherit-working-directory = false
 working-directory = home
