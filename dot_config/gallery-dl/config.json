@@ -8,6 +8,9 @@
       "skip": "abort:24",
       "cookies": ["firefox", null, null, null, "instagram.com"]
     },
+    "facebook": {
+      "cookies": ["firefox", null, null, "Facebook", ".facebook.com"]
+    },
     "erome": {
       "directory": ["{category}", "{user}", "{title} {album_id}"],
       "filename": "{title} {num:>02}.{extension}"

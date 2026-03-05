@@ -41,6 +41,9 @@ if test -d /usr/local/opt/sqlite/bin
     set -gx fish_user_paths /usr/local/opt/sqlite/bin $fish_user_paths
 end
 
+# For Obsidian CLI
+fish_add_path /Applications/Obsidian.app/Contents/MacOS
+
 # Open vscode editor in a new window and wait for the file to be saved
 if test -e /usr/local/bin/code
     set -U EDITOR code -nw
