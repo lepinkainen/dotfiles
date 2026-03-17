@@ -6,6 +6,9 @@
 
 # base16-materia
 
+# XDG base directory
+set -gx XDG_CONFIG_HOME ~/.config
+
 # Generic binaries
 if test -d "$HOME/bin/"
     set -gx fish_user_paths $HOME/bin/ $fish_user_paths
