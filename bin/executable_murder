@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Escalating process kill: TERM → INT → HUP → KILL
+# More graceful than kill -9 — gives the process a chance to clean up.
+# Usage: murder <process-name>
+set -euo pipefail
+
+if [ $# -eq 0 ]; then
+  echo "usage: murder <process-name>" >&2
+  exit 1
+fi
+
+name="$1"
+
+# Find matching PIDs (exclude ourselves)
+pids=$(pgrep -f "$name" | grep -v "^$$\$" || true)
+if [ -z "$pids" ]; then
+  echo "No processes matching '$name'" >&2
+  exit 1
+fi
+
+echo "Targeting processes matching '$name':"
+ps -p $(echo "$pids" | tr '\n' ',') -o pid,comm 2>/dev/null || true
+echo
+
+signals=(TERM INT HUP KILL)
+wait_secs=(2 2 2 0)
+
+for i in "${!signals[@]}"; do
+  sig="${signals[$i]}"
+  wait="${wait_secs[$i]}"
+
+  # Check which PIDs are still alive
+  alive=()
+  for pid in $pids; do
+    if kill -0 "$pid" 2>/dev/null; then
+      alive+=("$pid")
+    fi
+  done
+
+  if [ ${#alive[@]} -eq 0 ]; then
+    echo "All processes terminated."
+    exit 0
+  fi
+
+  echo "Sending SIG${sig} to ${#alive[@]} process(es)..."
+  for pid in "${alive[@]}"; do
+    kill -"$sig" "$pid" 2>/dev/null || true
+  done
+
+  if [ "$wait" -gt 0 ]; then
+    sleep "$wait"
+  fi
+done
+
+# Final check
+still_alive=false
+for pid in $pids; do
+  if kill -0 "$pid" 2>/dev/null; then
+    still_alive=true
+    break
+  fi
+done
+
+if $still_alive; then
+  echo "Warning: some processes may still be running." >&2
+  exit 1
+else
+  echo "All processes terminated."
+fi

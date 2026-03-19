@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Move files to trash instead of permanently deleting them.
+# macOS: uses Finder via AppleScript
+# Linux: uses gio trash
+set -euo pipefail
+
+if [ $# -eq 0 ]; then
+  echo "usage: trash <file> [file ...]" >&2
+  exit 1
+fi
+
+if [[ "$(uname)" == 'Darwin' ]]; then
+  for arg in "$@"; do
+    file="$(realpath "$arg")"
+    /usr/bin/osascript -e "tell application \"Finder\" to delete POSIX file \"$file\"" > /dev/null
+  done
+else
+  gio trash "$@"
+fi

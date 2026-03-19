@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Show local and/or global IP address.
+
+Usage:
+    myip          # show both
+    myip local    # local only
+    myip global   # global only
+"""
+
+import socket
+import sys
+import urllib.request
+
+
+def get_local_ip():
+    """Get local IP by connecting to a public DNS (no data sent)."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        return "unavailable"
+
+
+def get_global_ip():
+    try:
+        req = urllib.request.Request(
+            "https://icanhazip.com/",
+            headers={"User-Agent": "myip/1.0"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.read().decode().strip()
+    except Exception:
+        return "unavailable"
+
+
+def main():
+    arg = sys.argv[1] if len(sys.argv) > 1 else "both"
+    arg = arg.lower()
+
+    if arg in ("l", "local"):
+        print(get_local_ip())
+    elif arg in ("g", "global"):
+        print(get_global_ip())
+    else:
+        print(f"local:  {get_local_ip()}")
+        print(f"global: {get_global_ip()}")
+
+
+if __name__ == "__main__":
+    main()
