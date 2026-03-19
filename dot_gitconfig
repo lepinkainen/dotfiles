@@ -66,6 +66,13 @@
     prune = true # Remove useless local branches when fetching
     pruneTags = true
     all = true
+    fsckobjects = true
+
+[transfer]
+    fsckobjects = true
+
+[receive]
+    fsckobjects = true
 
 # sign commits with SSH key stored in 1password
 [commit]
