@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Copy stdin to system clipboard, stripping trailing newline.
+# macOS: pbcopy, Linux: xclip
+set -euo pipefail
+
+if hash pbcopy 2>/dev/null; then
+  cmd='pbcopy'
+elif hash xclip 2>/dev/null; then
+  cmd='xclip -selection clipboard'
+elif hash wl-copy 2>/dev/null; then
+  cmd='wl-copy'
+else
+  echo 'cannot find a copy program (need pbcopy, xclip, or wl-copy)' >&2
+  exit 1
+fi
+
+exec perl -pe 'chomp if eof' | $cmd

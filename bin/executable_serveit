@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Start a simple HTTP server in the current directory.
+# Usage: serveit [port]
+set -euo pipefail
+
+port="${1:-8000}"
+
+echo "Serving on http://localhost:$port"
+exec python3 -m http.server "$port"

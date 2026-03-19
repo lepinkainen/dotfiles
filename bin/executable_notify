@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Send a desktop notification. Cross-platform (Linux/macOS).
+# Usage: notify [title] [message]
+set -euo pipefail
+
+title="${1:-Notification}"
+message="${2:-$(date -Iseconds)}"
+
+if hash notify-send 2>/dev/null; then
+  exec notify-send --expire-time=5000 "$title" "$message"
+elif [[ "$(uname)" == 'Darwin' ]]; then
+  exec osascript -e "display notification \"$message\" with title \"$title\""
+else
+  echo "No notification method available" >&2
+  exit 1
+fi

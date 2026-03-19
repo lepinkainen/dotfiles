@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Kill processes by name. Uses pkill with confirmation.
+# Usage: murder <process-name>
+set -euo pipefail
+
+if [ $# -eq 0 ]; then
+  echo "usage: murder <process-name>" >&2
+  exit 1
+fi
+
+name="$1"
+
+# Show matching processes first
+matches=$(pgrep -la "$name" 2>/dev/null || true)
+if [ -z "$matches" ]; then
+  echo "No processes matching '$name'" >&2
+  exit 1
+fi
+
+echo "Matching processes:"
+echo "$matches"
+echo
+
+read -rp "Kill all? [y/N] " confirm
+if [[ "$confirm" =~ ^[Yy]$ ]]; then
+  pkill -f "$name"
+  echo "Killed."
+else
+  echo "Aborted."
+fi
