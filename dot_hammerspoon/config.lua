@@ -18,11 +18,7 @@ config.displays = {
 config.networks = {
     home = {
         ssids = { "Rocinante-5G" },
-        machine = "mimic"
-    },
-    work_at_home = {
-        ssids = { "Rocinante-5G" },
-        machine = "mystique"
+        machines = { "mimic", "mystique" }
     },
     work = {
         ssids = { "Metacore" },
@@ -39,7 +35,7 @@ config.layouts = {
             "com.apple.Music",
             "ru.keepcoder.Telegram",
             "com.hnc.Discord",
-            "com.github.wez.wezterm"
+            "com.mitchellh.ghostty"
         },
         home = {
             "com.irCCloud.desktop"
@@ -78,9 +74,9 @@ config.apps = {
         name = "Music",
         bundleID = "com.apple.Music"
     },
-    wezterm = {
-        name = "WezTerm",
-        bundleID = "com.github.wez.wezterm"
+    ghostty = {
+        name = "Ghostty",
+        bundleID = "com.mitchellh.ghostty"
     },
     irccloud = {
         name = "IRCCloud",

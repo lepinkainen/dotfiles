@@ -36,7 +36,7 @@ This is my personal Hammerspoon configuration for macOS automation and window ma
 ### Application Shortcuts (Hyper + Key)
 
 - O: Launch Obsidian and open daily note
-- Z: Launch WezTerm
+- Z: Launch Ghostty
 
 ## Structure
 

@@ -17,8 +17,21 @@ local function detectLocation()
     log.i("Current WiFi SSID: " .. (currentSSID or "None"))
     log.i("Machine name: " .. machineName)
 
-    -- Check if we're at home, just check the machine name
-    if machineName:find(config.networks.home.machine) then
+    -- Check if we're at home, check against all home machine names
+    local isHomeMachine = false
+    for _, machine in ipairs(config.networks.home.machines) do
+        if machineName:find(machine) then
+            isHomeMachine = true
+            break
+        end
+    end
+
+    if isHomeMachine then
+        -- Home machine with laptop only (no external displays)
+        if #hs.screen.allScreens() == 1 then
+            log.i("home mode - laptop only")
+            return "home_laptop_only"
+        end
         log.i("home mode")
         return "home"
     end
@@ -60,6 +73,8 @@ local function applyLayoutForLocation()
         -- Apply the layout for this location
         if location == "home" then
             layouts.applyHomeLayout()
+        elseif location == "home_laptop_only" then
+            layouts.applyHomeLaptopOnlyLayout()
         elseif location == "work_at_home" then
             layouts.applyWorkAtHomeLayout()
         elseif location == "work_office" then

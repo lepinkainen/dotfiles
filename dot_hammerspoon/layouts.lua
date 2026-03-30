@@ -75,7 +75,7 @@ local function applyWorkAtHomeLayout()
         { "Discord",     nil, verticalScreen, hs.geometry.unitrect(0, 0.5, 1, 0.5), nil, nil }, -- bottom half
         { "Slack",       nil, mainDisplay,    hs.geometry.unitrect(0.5, 0, 0.5, 1), nil, nil }, -- right half
         { "md.obsidian", nil, mainDisplay,    hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil }, -- left half
-        { "WezTerm",     nil, laptopScreen,   hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }, -- full screen
+        { "Ghostty",     nil, laptopScreen,   hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }, -- full screen
         { "Music",       nil, laptopScreen,   hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }  -- full screen
     }
 
@@ -96,7 +96,7 @@ local function applyWorkAtOfficeLayout()
         { "Discord",     nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }, -- full screen
         { "Slack",       nil, workDisplay,  hs.geometry.unitrect(0.5, 0, 0.5, 1), nil, nil }, -- right half
         { "md.obsidian", nil, workDisplay,  hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil }, -- left half
-        { "WezTerm",     nil, workDisplay,  hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil }, -- left half
+        { "Ghostty",     nil, workDisplay,  hs.geometry.unitrect(0, 0, 0.5, 1),   nil, nil }, -- left half
         { "Music",       nil, laptopScreen, hs.geometry.unitrect(0, 0, 1, 1),     nil, nil }  -- full screen
     }
 
@@ -111,12 +111,19 @@ local function applyWorkAtOfficeLayout()
     setMainWindowFullscreen(config.apps.music.bundleID)
 end
 
+-- Home layout for laptop-only (no external displays)
+local function applyHomeLaptopOnlyLayout()
+    -- Launch common apps and home-specific apps, no specific layout
+    launchApps(config.layouts.apps.common)
+    launchApps(config.layouts.apps.home)
+end
+
 -- Default layout for when no specific layout applies
 local function applyDefaultLayout()
     -- Simple layout that works on any machine
     local defaultLayout = {
         { "md.obsidian", nil, nil, hs.geometry.unitrect(0, 0, 0.7, 1),   nil, nil },
-        { "WezTerm",     nil, nil, hs.geometry.unitrect(0.7, 0, 0.3, 1), nil, nil }
+        { "Ghostty",     nil, nil, hs.geometry.unitrect(0.7, 0, 0.3, 1), nil, nil }
     }
 
     -- Launch just the common apps
@@ -129,9 +136,22 @@ function ApplyLayout()
     local layoutName = nil
     local machineName = hs.host.names()[1]:lower()
 
-    if machineName:find(config.networks.home.machine) then
-        applyHomeLayout()
-        layoutName = "Home"
+    local isHomeMachine = false
+    for _, machine in ipairs(config.networks.home.machines) do
+        if machineName:find(machine) then
+            isHomeMachine = true
+            break
+        end
+    end
+
+    if isHomeMachine then
+        if #hs.screen.allScreens() == 1 then
+            applyHomeLaptopOnlyLayout()
+            layoutName = "Home (laptop only)"
+        else
+            applyHomeLayout()
+            layoutName = "Home"
+        end
     end
 
     if machineName:find(config.networks.work.machine) then
@@ -168,6 +188,7 @@ end
 
 return {
     applyHomeLayout = applyHomeLayout,
+    applyHomeLaptopOnlyLayout = applyHomeLaptopOnlyLayout,
     applyWorkAtHomeLayout = applyWorkAtHomeLayout,
     applyWorkAtOfficeLayout = applyWorkAtOfficeLayout,
     applyDefaultLayout = applyDefaultLayout,
