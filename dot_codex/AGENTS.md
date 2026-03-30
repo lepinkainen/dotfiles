@@ -15,7 +15,6 @@
 
 ## Facts
 
-- The latest Go version is 1.25
+- The latest Go version is 1.26
 - `task lint` MUST always pass without errors.
-- Always use `bd ready` to see what task is next on the list
 - if llm-shared exists in the project, do not edit it without explicit permission
