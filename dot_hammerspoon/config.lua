@@ -22,7 +22,7 @@ config.networks = {
     },
     work = {
         ssids = { "Metacore" },
-        machine = "mystique"
+        machine = "gambit"
     }
 }
 

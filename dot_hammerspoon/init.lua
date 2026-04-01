@@ -1,3 +1,26 @@
+-- Trigger Location Services permission prompt (needed for WiFi SSID access)
+if hs.location.servicesEnabled() then
+    hs.location.start()
+
+    hs.timer.doAfter(2, function()
+        local location = hs.location.get()
+        if location then
+            print("Current Location:")
+            print("Latitude: " .. (location.latitude or "N/A"))
+            print("Longitude: " .. (location.longitude or "N/A"))
+            print("Altitude: " .. (location.altitude or "N/A"))
+            print("Horizontal Accuracy: " .. (location.horizontalAccuracy or "N/A"))
+            print("Vertical Accuracy: " .. (location.verticalAccuracy or "N/A"))
+        else
+            print("Unable to retrieve location information.")
+        end
+
+        hs.location.stop()
+    end)
+else
+    print("Location services are not enabled.")
+end
+
 -- Load configuration
 local config = require("config")
 local hyper = config.hyper
