@@ -27,17 +27,22 @@ Examples:
 
 import sys
 import re
+import shutil
+import subprocess
+from datetime import date
 import llm
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 
 # Default prompts for each content type
-ARTICLE_PROMPT = """Summarize this article in a clear, well-formatted way for reading in a terminal. Use markdown formatting with bullet points where appropriate. Include the main ideas and key points."""
+_TAG_INSTRUCTION = "At the very end of your response, on its own line, write: TAGS: tag1, tag2, tag3 (3-6 lowercase tags relevant to the content, no # prefix)."
 
-YOUTUBE_PROMPT = """Summarize this video in a clear, well-formatted way for reading in a terminal. Use markdown formatting with bullet points where appropriate. Include the main topics and key takeaways."""
+ARTICLE_PROMPT = f"""Summarize this article in a clear, well-formatted way for reading in a terminal. Use markdown formatting with bullet points where appropriate. Include the main ideas and key points. Start with a # heading using the article's actual title (not "Summary of ..."). {_TAG_INSTRUCTION}"""
 
-HN_PROMPT = """Summarize the Hacker News discussion.
+YOUTUBE_PROMPT = f"""Summarize this video in a clear, well-formatted way for reading in a terminal. Use markdown formatting with bullet points where appropriate. Include the main topics and key takeaways. Start with a # heading using the video's actual title (not "Summary of ..."). {_TAG_INSTRUCTION}"""
+
+HN_PROMPT = f"""Summarize the Hacker News discussion. Start with a # heading using the post's actual title (not "Summary of ...").
 
 Requirements:
 - Focus on the main technical and factual points raised by commenters.
@@ -48,7 +53,8 @@ Requirements:
 
 Output format:
 - 3-6 bullet points for the summary
-- Then a "Notable quotes" section with the quotes and relevant context."""
+- Then a "Notable quotes" section with the quotes and relevant context
+- {_TAG_INSTRUCTION}"""
 
 
 def detect_content_type(url: str) -> tuple[str, str]:
@@ -111,6 +117,50 @@ def build_fragment_arg(content_type: str, url: str) -> str:
         return f"reader:{url}"
 
     raise ValueError(f"Unknown content type: {content_type}")
+
+
+_TAGS_RE = re.compile(r'^TAGS:\s*(.+)$', re.MULTILINE | re.IGNORECASE)
+
+
+def save_to_obsidian(url: str, question: str | None, body: str, tags: list[str], err_console: Console) -> None:
+    """Save the summary to Obsidian vault under Questions/."""
+    if not shutil.which("obsidian"):
+        err_console.print("[yellow]Warning:[/yellow] obsidian CLI not found — output not saved to Obsidian")
+        return
+
+    heading_match = re.search(r'^#\s+(.+)', body, re.MULTILINE)
+    title = heading_match.group(1).strip() if heading_match else url
+
+    safe_title = title.translate(str.maketrans('', '', ':/\\')).strip()
+    today = date.today().isoformat()
+    note_path = f"Questions/{today} {safe_title}.md"
+
+    # Build frontmatter
+    frontmatter_lines = [
+        "---",
+        f"source: {url}",
+        f"date: {today}",
+    ]
+    if question:
+        frontmatter_lines.append(f"question: {question}")
+    frontmatter_lines += ["tags:"] + [f"  - {t}" for t in tags] + ["---", ""]
+    content = "\n".join(frontmatter_lines) + body
+
+    try:
+        result = subprocess.run(
+            ["obsidian", "create", f"path={note_path}", f"content={content}", "overwrite"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        output = result.stdout.strip()
+        if result.returncode != 0 or output.startswith("Error:"):
+            err_console.print(f"[yellow]Warning:[/yellow] Failed to save to Obsidian: {output or result.stderr.strip()}")
+        else:
+            console = Console(width=100)
+            console.print(f"[dim]Saved to Obsidian: {note_path}[/dim]")
+    except Exception as e:
+        err_console.print(f"[yellow]Warning:[/yellow] Failed to save to Obsidian: {e}")
 
 
 def main():
@@ -192,14 +242,20 @@ def main():
         model = llm.get_model(llm.get_default_model())
         response = model.prompt(prompt, fragments=fragments)
 
-        # Collect response and render as markdown
-        full_response = ""
-        for chunk in response:
-            full_response += chunk
+        full_response = "".join(response)
 
-        # Render the markdown with rich
-        console.print(Markdown(full_response))
-        console.print()  # Final newline
+        tag_match = _TAGS_RE.search(full_response)
+        if tag_match:
+            tags = ["summary"] + [t.strip().lstrip('#').replace(' ', '_') for t in tag_match.group(1).split(',') if t.strip()]
+            body = full_response[:tag_match.start()].rstrip()
+        else:
+            tags = ["summary"]
+            body = full_response
+
+        console.print(Markdown(body))
+        console.print()
+
+        save_to_obsidian(url, question, body, tags, err_console)
 
     except ValueError as e:
         error_msg = str(e)
