@@ -1,0 +1,67 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "httpx",
+#     "rich",
+# ]
+# ///
+"""
+Summarize a URL using the Kagi Universal Summarizer API.
+
+Usage:
+    kagi-summary <url>
+"""
+
+import sys
+import subprocess
+import httpx
+from rich.console import Console
+from rich.markdown import Markdown
+
+
+def get_api_key() -> str:
+    result = subprocess.run(
+        ["op", "read", "op://Development/Kagi API/credential"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        print(f"Error: failed to get Kagi API key: {result.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
+    return result.stdout.strip()
+
+
+def summarize(url: str, api_key: str) -> str:
+    response = httpx.get(
+        "https://kagi.com/api/v0/summarize",
+        params={"url": url, "summary_type": "takeaway"},
+        headers={"Authorization": f"Bot {api_key}"},
+        timeout=60,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return data["data"]["output"]
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("usage: kagi-summary <url>", file=sys.stderr)
+        sys.exit(1)
+
+    url = sys.argv[1]
+    api_key = get_api_key()
+
+    console = Console(width=100)
+    try:
+        summary = summarize(url, api_key)
+        console.print(Markdown(summary))
+    except httpx.HTTPStatusError as e:
+        print(f"Error: HTTP {e.response.status_code}: {e.response.text}", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        sys.exit(130)
+
+
+if __name__ == "__main__":
+    main()
