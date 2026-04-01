@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Upgrade brew packages and global npm packages.
+# Uses tmux to run both in parallel when available.
+set -euo pipefail
+
+BREW_CMD='echo "=== Homebrew ===" && brew update && brew upgrade && brew cleanup && echo && echo "✓ Brew done. Press enter to close." && read'
+
+NPM_CMD='echo "=== npm global ===" && npm outdated -g --depth=0 || true && echo && npm update -g && echo && echo "✓ npm done. Press enter to close." && read'
+
+if ! command -v tmux &>/dev/null; then
+    # No tmux — run sequentially
+    echo "=== Homebrew ==="
+    brew update && brew upgrade && brew cleanup
+    echo
+    echo "=== npm global ==="
+    npm outdated -g --depth=0 || true
+    echo
+    npm update -g
+    exit 0
+fi
+
+if [ -n "${TMUX:-}" ]; then
+    # Already inside tmux — split current window
+    tmux split-window -v "$NPM_CMD"
+    # Run brew in the current pane
+    eval "$BREW_CMD"
+else
+    # Outside tmux — create a new session with two panes
+    tmux new-session -s upgrade -d "$BREW_CMD"
+    tmux split-window -v -t upgrade "$NPM_CMD"
+    tmux select-layout -t upgrade even-vertical
+    tmux attach-session -t upgrade
+fi
