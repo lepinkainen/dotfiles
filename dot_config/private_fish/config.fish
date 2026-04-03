@@ -111,38 +111,11 @@ end
 # GPG setup, it needs GPG_TTY set to do anything useful
 set -gx GPG_TTY (tty)
 
-### Replace builtins with external software if available
-
-# Eza is an ls replacement. Exa is deprecated
-if type -q eza
-    alias ls "eza --time-style long-iso --icons --no-quotes --git --header"
+### Disable history and fancy aliases when running under Claude Code
+if set -q CLAUDECODE
+    set -g fish_history ""
 end
 
-# Bat is a fancier cat
-if type -q bat
-    alias cat bat
-end
-
-# Bat is named batcat on ubuntu/debian, because of reasons
-if type -q batcat
-    alias cat batcat
-end
-
-# fd is a better find
-if type -q fd
-    alias find fd
-end
-
-# ripgrep is a better grep
-if type -q rg
-    alias grep rg
-end
-
-# btop is a better top
-if type -q btop
-    alias top btop
-    alias htop btop
-end
 
 # automatic env variables when entering directories
 # plus other stuff
@@ -165,21 +138,6 @@ end
 #    alias tmux "tmux new-session -A -s main"
 #end
 
-# Kubernetes shortcuts if kubectl is available
-if type -q kubectl
-    alias k kubectl
-end
-
-# Open yazi in the current directory
-# Set the working directory from yazi
-function y
-    set tmp (mktemp -t "yazi-cwd.XXXXXX")
-    yazi $argv --cwd-file="$tmp"
-    if read -z cwd <"$tmp"; and [ -n "$cwd" ]; and [ "$cwd" != "$PWD" ]
-        builtin cd -- "$cwd"
-    end
-    rm -f -- "$tmp"
-end
 
 function load_1password_secrets
     # Check if op is installed and user is signed in
