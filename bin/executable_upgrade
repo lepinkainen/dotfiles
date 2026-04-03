@@ -3,19 +3,21 @@
 # Uses tmux to run both in parallel when available.
 set -euo pipefail
 
+MIN_AGE_DAYS="${1:-7}"
+
 BREW_CMD='echo "=== Homebrew ===" && brew update && brew upgrade && brew cleanup && echo && echo "✓ Brew done. Press enter to close." && read'
 
-NPM_CMD='echo "=== npm global ===" && npm outdated -g --depth=0 || true && echo && npm update -g && echo && echo "✓ npm done. Press enter to close." && read'
+NPM_CMD="echo \"=== npm global (min age: ${MIN_AGE_DAYS}d) ===\" && npm outdated -g --depth=0 --min-release-age=${MIN_AGE_DAYS} || true && echo && npm update -g --min-release-age=${MIN_AGE_DAYS} && echo && echo \"✓ npm done. Press enter to close.\" && read"
 
 if ! command -v tmux &>/dev/null; then
     # No tmux — run sequentially
     echo "=== Homebrew ==="
     brew update && brew upgrade && brew cleanup
     echo
-    echo "=== npm global ==="
-    npm outdated -g --depth=0 || true
+    echo "=== npm global (min age: ${MIN_AGE_DAYS}d) ==="
+    npm outdated -g --depth=0 --min-release-age="$MIN_AGE_DAYS" || true
     echo
-    npm update -g
+    npm update -g --min-release-age="$MIN_AGE_DAYS"
     exit 0
 fi
 
