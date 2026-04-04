@@ -1,18 +1,34 @@
 #!/usr/bin/env bash
-# Upgrade brew packages and global npm packages.
+# Upgrade system packages and global npm packages.
 # Uses tmux to run both in parallel when available.
 set -euo pipefail
 
 MIN_AGE_DAYS="${1:-7}"
 
-BREW_CMD='echo "=== Homebrew ===" && brew update && brew upgrade && brew cleanup && echo && echo "✓ Brew done. Press enter to close." && read'
+# Detect package manager
+if command -v brew &>/dev/null; then
+    PKG_NAME="Homebrew"
+    PKG_CMD='echo "=== Homebrew ===" && brew update && brew upgrade && brew cleanup && echo && echo "✓ Brew done. Press enter to close." && read'
+    PKG_SEQ() { brew update && brew upgrade && brew cleanup; }
+elif command -v pacman &>/dev/null; then
+    PKG_NAME="Pacman"
+    PKG_CMD='echo "=== Pacman ===" && sudo pacman -Syu --noconfirm && echo && echo "✓ Pacman done. Press enter to close." && read'
+    PKG_SEQ() { sudo pacman -Syu --noconfirm; }
+elif command -v apt &>/dev/null; then
+    PKG_NAME="APT"
+    PKG_CMD='echo "=== APT ===" && sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y && echo && echo "✓ APT done. Press enter to close." && read'
+    PKG_SEQ() { sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y; }
+else
+    echo "No supported package manager found (brew, pacman, apt)" >&2
+    exit 1
+fi
 
 NPM_CMD="echo \"=== npm global (min age: ${MIN_AGE_DAYS}d) ===\" && npm outdated -g --depth=0 --min-release-age=${MIN_AGE_DAYS} || true && echo && npm update -g --min-release-age=${MIN_AGE_DAYS} && echo && echo \"✓ npm done. Press enter to close.\" && read"
 
 if ! command -v tmux &>/dev/null; then
     # No tmux — run sequentially
-    echo "=== Homebrew ==="
-    brew update && brew upgrade && brew cleanup
+    echo "=== ${PKG_NAME} ==="
+    PKG_SEQ
     echo
     echo "=== npm global (min age: ${MIN_AGE_DAYS}d) ==="
     npm outdated -g --depth=0 --min-release-age="$MIN_AGE_DAYS" || true
@@ -24,11 +40,11 @@ fi
 if [ -n "${TMUX:-}" ]; then
     # Already inside tmux — split current window
     tmux split-window -v "$NPM_CMD"
-    # Run brew in the current pane
-    eval "$BREW_CMD"
+    # Run package manager in the current pane
+    eval "$PKG_CMD"
 else
     # Outside tmux — create a new session with two panes
-    tmux new-session -s upgrade -d "$BREW_CMD"
+    tmux new-session -s upgrade -d "$PKG_CMD"
     tmux split-window -v -t upgrade "$NPM_CMD"
     tmux select-layout -t upgrade even-vertical
     tmux attach-session -t upgrade
