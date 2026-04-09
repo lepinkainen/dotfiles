@@ -1,88 +1,116 @@
 /**
- * Desktop Notification Extension
+ * Pi Notify Extension
  *
- * Sends a native desktop notification when the agent finishes and is waiting for input.
- * Uses OSC 777 escape sequence - no external dependencies.
- *
- * Supported terminals: Ghostty, iTerm2, WezTerm, rxvt-unicode
- * Not supported: Kitty (uses OSC 99), Terminal.app, Windows Terminal, Alacritty
+ * Sends a native terminal notification when Pi agent is done and waiting for input.
+ * Supports multiple terminal protocols:
+ * - OSC 777: Ghostty, iTerm2, WezTerm, rxvt-unicode
+ * - OSC 99: Kitty
+ * - Windows toast: Windows Terminal (WSL)
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { Markdown, type MarkdownTheme } from "@mariozechner/pi-tui";
 
-/**
- * Send a desktop notification via OSC 777 escape sequence.
- */
-const notify = (title: string, body: string): void => {
-	// OSC 777 format: ESC ] 777 ; notify ; title ; body BEL
-	process.stdout.write(`\x1b]777;notify;${title};${body}\x07`);
-};
+function windowsToastScript(title: string, body: string): string {
+	const type = "Windows.UI.Notifications";
+	const mgr = `[${type}.ToastNotificationManager, ${type}, ContentType = WindowsRuntime]`;
+	const template = `[${type}.ToastTemplateType]::ToastText01`;
+	const toast = `[${type}.ToastNotification]::new($xml)`;
+	return [
+		`${mgr} > $null`,
+		`$xml = [${type}.ToastNotificationManager]::GetTemplateContent(${template})`,
+		`$xml.GetElementsByTagName('text')[0].AppendChild($xml.CreateTextNode('${body}')) > $null`,
+		`[${type}.ToastNotificationManager]::CreateToastNotifier('${title}').Show(${toast})`,
+	].join("; ");
+}
 
-const isTextPart = (part: unknown): part is { type: "text"; text: string } =>
-	Boolean(part && typeof part === "object" && "type" in part && part.type === "text" && "text" in part);
+function sanitize(value: string): string {
+	return value.replace(/[\x00-\x1f\x7f]/g, " ").replace(/[\x07\x1b]/g, " ");
+}
 
-const extractLastAssistantText = (messages: Array<{ role?: string; content?: unknown }>): string | null => {
-	for (let i = messages.length - 1; i >= 0; i--) {
-		const message = messages[i];
-		if (message?.role !== "assistant") {
-			continue;
-		}
+function writeTerminalSequence(sequence: string): void {
+	if (process.env.TMUX) {
+		process.stdout.write(`\x1bPtmux;${sequence.replace(/\x1b/g, "\x1b\x1b")}\x1b\\`);
+		return;
+	}
+	process.stdout.write(sequence);
+}
 
-		const content = message.content;
-		if (typeof content === "string") {
-			return content.trim() || null;
-		}
+function notifyOSC777(title: string, body: string): void {
+	writeTerminalSequence(`\x1b]777;notify;${sanitize(title)};${sanitize(body)}\x07`);
+}
 
-		if (Array.isArray(content)) {
-			const text = content.filter(isTextPart).map((part) => part.text).join("\n").trim();
-			return text || null;
-		}
+function notifyOSC99(title: string, body: string): void {
+	// Kitty OSC 99: i=notification id, d=0 means not done yet, p=body for second part
+	writeTerminalSequence(`\x1b]99;i=1:d=0;${sanitize(title)}\x1b\\`);
+	writeTerminalSequence(`\x1b]99;i=1:p=body;${sanitize(body)}\x1b\\`);
+}
 
+function notifyWindows(title: string, body: string): void {
+	const { execFile } = require("child_process");
+	execFile("powershell.exe", ["-NoProfile", "-Command", windowsToastScript(title, body)]);
+}
+
+function notifyMacOS(title: string, body: string): void {
+	const { execFile } = require("child_process");
+	execFile("osascript", [
+		"-e",
+		`display notification ${JSON.stringify(body)} with title ${JSON.stringify(title)}`,
+	]);
+}
+
+function isGhostty(): boolean {
+	return process.env.TERM_PROGRAM === "ghostty" || !!process.env.GHOSTTY_BIN_DIR || !!process.env.GHOSTTY_RESOURCES_DIR;
+}
+
+function notify(title: string, body: string): void {
+	if (process.env.WT_SESSION) {
+		notifyWindows(title, body);
+	} else if (process.env.KITTY_WINDOW_ID) {
+		notifyOSC99(title, body);
+	} else if (isGhostty()) {
+		notifyOSC777(title, body);
+	} else if (process.platform === "darwin") {
+		notifyMacOS(title, body);
+	} else {
+		notifyOSC777(title, body);
+	}
+}
+
+function isGhosttyFocusedOnMacOS(): boolean | null {
+	if (process.platform !== "darwin" || !isGhostty()) {
 		return null;
 	}
 
-	return null;
-};
+	const { spawnSync } = require("child_process");
+	const result = spawnSync(
+		"osascript",
+		[
+			"-e",
+			'tell application "System Events" to get name of first application process whose frontmost is true',
+		],
+		{ encoding: "utf8" },
+	);
 
-const plainMarkdownTheme: MarkdownTheme = {
-	heading: (text) => text,
-	link: (text) => text,
-	linkUrl: () => "",
-	code: (text) => text,
-	codeBlock: (text) => text,
-	codeBlockBorder: () => "",
-	quote: (text) => text,
-	quoteBorder: () => "",
-	hr: () => "",
-	listBullet: () => "",
-	bold: (text) => text,
-	italic: (text) => text,
-	strikethrough: (text) => text,
-	underline: (text) => text,
-};
-
-const simpleMarkdown = (text: string, width = 80): string => {
-	const markdown = new Markdown(text, 0, 0, plainMarkdownTheme);
-	return markdown.render(width).join("\n");
-};
-
-const formatNotification = (text: string | null): { title: string; body: string } => {
-	const simplified = text ? simpleMarkdown(text) : "";
-	const normalized = simplified.replace(/\s+/g, " ").trim();
-	if (!normalized) {
-		return { title: "Ready for input", body: "" };
+	if (result.status !== 0) {
+		return null;
 	}
 
-	const maxBody = 200;
-	const body = normalized.length > maxBody ? `${normalized.slice(0, maxBody - 1)}…` : normalized;
-	return { title: "π", body };
-};
+	return result.stdout.trim() === "Ghostty";
+}
+
+function shouldNotify(): boolean {
+	const ghosttyFocused = isGhosttyFocusedOnMacOS();
+	if (ghosttyFocused !== null) {
+		return !ghosttyFocused;
+	}
+	return true;
+}
 
 export default function (pi: ExtensionAPI) {
-	pi.on("agent_end", async (event) => {
-		const lastText = extractLastAssistantText(event.messages ?? []);
-		const { title, body } = formatNotification(lastText);
-		notify(title, body);
+	pi.on("agent_end", async () => {
+		if (!shouldNotify()) {
+			return;
+		}
+		notify("Pi", "Ready for input");
 	});
 }
