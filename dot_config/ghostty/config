@@ -37,8 +37,8 @@ mouse-hide-while-typing = true
 confirm-close-surface = true
 
 auto-update = check
-# left option is alt, right is option
-macos-option-as-alt = left
+# right option is alt, left is option
+macos-option-as-alt = right
 
 # New tabs and windows start in home
 window-step-resize = true
