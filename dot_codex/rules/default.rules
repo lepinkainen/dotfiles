@@ -15,6 +15,7 @@ prefix_rule(pattern=["task", "build"], decision="allow")
 prefix_rule(pattern=["task", "build-ci"], decision="allow")
 prefix_rule(pattern=["task", "lint-check"], decision="allow")
 prefix_rule(pattern=["task", "test"], decision="allow")
+prefix_rule(pattern=["task", "lint"], decision="allow")
 
 # --- Python/uv ---
 prefix_rule(pattern=["uv", "run", "pytest"], decision="allow")
@@ -92,6 +93,8 @@ prefix_rule(pattern=["git", "reset"], decision="prompt")
 prefix_rule(pattern=["git", "rebase"], decision="prompt")
 prefix_rule(pattern=["git", "clean"], decision="prompt")
 
+prefix_rule(pattern=["golangci-lint", "cache", "clean"], decision="allow")
+prefix_rule(pattern=["golangci-lint", "run", "./..."], decision="allow")
 
 # --- Optional: forbid truly dangerous patterns ---
 # If you never want the agent to do these automatically, flip to forbidden.
@@ -99,11 +102,3 @@ prefix_rule(
   pattern=["rm", "-rf", ["/", "/*", "~/"]],
   decision="forbidden",
 )
-prefix_rule(pattern=["bd", "list", "--open"], decision="allow")
-prefix_rule(pattern=["bd", "sync"], decision="allow")
-prefix_rule(pattern=["go", "test", "./cmd/diff", "-run", "TestDiffAutoResolvesTitleYearExactMatches"], decision="allow")
-prefix_rule(pattern=["go", "test", "./cmd/diff"], decision="allow")
-prefix_rule(pattern=["go", "build", "-o", "build/hermes", "."], decision="allow")
-prefix_rule(pattern=["go", "list", "./..."], decision="allow")
-prefix_rule(pattern=["golangci-lint", "cache", "clean"], decision="allow")
-prefix_rule(pattern=["golangci-lint", "run", "./..."], decision="allow")
