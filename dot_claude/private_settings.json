@@ -41,7 +41,10 @@
       "WebFetch(domain:raw.githubusercontent.com)"
     ]
   },
-  "model": "opus",
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/shrike/.claude/statusline-command.sh"
+  },
   "enabledPlugins": {
     "typescript-lsp@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
@@ -60,9 +63,38 @@
       }
     }
   },
-  "effortLevel": "medium",
-  "statusLine": {
-    "type": "command",
-    "command": "bash /Users/shrike/.claude/statusline-command.sh"
-  }
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/cmux-notify.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/cmux-notify.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/log-bash-commands.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "effortLevel": "medium"
 }
