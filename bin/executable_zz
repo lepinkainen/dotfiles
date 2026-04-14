@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+SESSION="${ZELLIJ_SESSION:-dev-$(basename "$PWD")}" 
+
+zellij attach -c "$SESSION"
