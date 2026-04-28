@@ -59,6 +59,21 @@ command_title_mode() {
     esac
 }
 
+command_display_name() {
+    case "$1" in
+        pi)                     printf 'π' ;;
+        claude)                 printf 'Claude Code' ;;
+        codex)                  printf 'Codex' ;;
+        gemini)                 printf 'Gemini' ;;
+        *)                      printf '%s' "$1" ;;
+    esac
+}
+
+is_version_like_title() {
+    local raw_title="$1"
+    [[ "$raw_title" =~ ^v?[0-9]+(\.[0-9]+)+([[:space:]].*)?$ ]]
+}
+
 # Note: value is shortened by default fish_title to 10 characters
 host_label() {
     case "$1" in
@@ -83,10 +98,39 @@ short_title() {
     printf '%s' "$short_info"
 }
 
+infer_special_app() {
+    local raw_title="$1"
+    local lower_title="${raw_title,,}"
+
+    case "$lower_title" in
+        *"claude code"*|*"claude"*) printf 'claude' ;;
+        *"codex"*)                    printf 'codex' ;;
+        *"gemini"*)                   printf 'gemini' ;;
+        "pi"|"pi "*|*" pi"|"π"|"π "*|*" π") printf 'pi' ;;
+    esac
+}
+
+clean_special_title() {
+    local cleaned="$1"
+
+    # Strip common leading version prefixes and spinner/punctuation markers.
+    cleaned="$(printf '%s' "$cleaned" | perl -pe 's/^v?\d+(?:\.\d+)+(?:[-+][A-Za-z0-9._-]+)?\s+//; s/^[[:punct:]✳★☆•·⋅✦✱✲✴✷✸✹✺✻✼✽✾✿❋❊❉❈❇]+\s*//;')"
+    printf '%s' "$cleaned"
+}
+
 # normalize aliases so icon + title-strip logic can use one canonical name
 # original_cmd is kept for suffix stripping (e.g. "- VIM", "- NVIM")
 original_cmd="$cmd"
 cmd="$(normalize_cmd "$cmd")"
+
+# Some tools expose a useless command name (wrapper binary, version string) but a useful pane title.
+# Prefer the title when it clearly identifies a known app.
+wrapped_app="$(infer_special_app "$title")"
+if [[ -n "$wrapped_app" ]] && { [[ "$cmd" =~ ^(node|bun|deno|python|python3)$ ]] || is_version_like_title "$cmd"; }; then
+    original_cmd="$wrapped_app"
+    cmd="$wrapped_app"
+    title="$(clean_special_title "$title")"
+fi
 
 # --- icon + title mode ---
 icon="$(command_icon "$cmd")"
@@ -144,6 +188,12 @@ if [[ "$title_mode" == remote ]]; then
         info="$remote $remote_path"
     else
         info="$remote"
+    fi
+elif [[ "$cmd" =~ ^(pi|claude|codex|gemini)$ ]]; then
+    if [[ -z "$title" ]] || is_version_like_title "$title"; then
+        info="$(command_display_name "$cmd")"
+    else
+        info="$title"
     fi
 elif [[ "$title_mode" == short ]]; then
     info="$(short_title "$title" "$cmd" "$original_cmd")"
