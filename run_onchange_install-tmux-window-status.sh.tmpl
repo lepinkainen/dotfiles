@@ -1,0 +1,23 @@
+#!/bin/sh
+# Build tmux-window-status Go binary into ~/bin per-host.
+# Re-runs when source hashes change (chezmoi tracks the comments below).
+#
+# main.go: {{ include "dot_local/share/tmux-title/main.go" | sha256sum }}
+# go.mod:  {{ include "dot_local/share/tmux-title/go.mod" | sha256sum }}
+
+set -eu
+
+src="{{ .chezmoi.homeDir }}/.local/share/tmux-title"
+out="{{ .chezmoi.homeDir }}/bin/tmux-window-status"
+
+if ! command -v go >/dev/null 2>&1; then
+    echo "go not installed; skipping tmux-window-status build (host=$(hostname))" >&2
+    exit 0
+fi
+
+cd "$src"
+tmp="${out}.new.$$"
+trap 'rm -f "$tmp"' EXIT
+go build -trimpath -ldflags='-s -w' -o "$tmp" .
+mv -f "$tmp" "$out"
+echo "Built $out"
