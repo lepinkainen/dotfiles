@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+USERNAME="${GIT_MIRROR_USER:-lepinkainen}"
+REMOTE_NAME="${GIT_MIRROR_REMOTE:-origin}"
+PRIMARY="github"
+
+usage() {
+  cat <<'USAGE'
+Usage: git-mirror-setup [repo-name]
+
+Configure the current Git repository so pushes to origin go to:
+  - GitHub   git@github.com:lepinkainen/<repo>.git   (fetch + push; primary)
+  - sr.ht    git@git.sr.ht:~lepinkainen/<repo>       (push only; auto-created by sr.ht on push)
+  - Codeberg git@codeberg.org:lepinkainen/<repo>.git (push only)
+
+If repo-name is omitted, it is inferred from the current directory or origin URL.
+
+Environment overrides:
+  GIT_MIRROR_USER=someuser       default: lepinkainen
+  GIT_MIRROR_REMOTE=upstream     default: origin
+  GIT_MIRROR_SKIP_PUSH=1         configure only; do not push
+
+USAGE
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+infer_repo_name() {
+  local from_origin=""
+  from_origin="$(git remote get-url "$REMOTE_NAME" 2>/dev/null || true)"
+  if [[ -n "$from_origin" ]]; then
+    basename "$from_origin" .git
+    return
+  fi
+  basename "$(git rev-parse --show-toplevel)"
+}
+
+repo_exists() {
+  local url="$1"
+  GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$url" HEAD >/dev/null 2>&1 || \
+    GIT_TERMINAL_PROMPT=0 git ls-remote "$url" >/dev/null 2>&1
+}
+
+print_create_help() {
+  local service="$1"
+  local repo="$2"
+
+  case "$service" in
+    github)
+      echo "GitHub repo missing: https://github.com/$USERNAME/$repo"
+      if command -v gh >/dev/null 2>&1; then
+        echo "  Create with: gh repo create $USERNAME/$repo --private --source=. --remote=$REMOTE_NAME"
+        echo "  Or public:  gh repo create $USERNAME/$repo --public --source=. --remote=$REMOTE_NAME"
+      else
+        echo "  Create at:  https://github.com/new?name=$repo"
+      fi
+      ;;
+    srht)
+      echo "sr.ht repo missing: https://git.sr.ht/~$USERNAME/$repo"
+      if command -v hut >/dev/null 2>&1; then
+        echo "  Create with: hut git create $repo"
+      else
+        echo "  Create at:  https://git.sr.ht/create"
+      fi
+      ;;
+    codeberg)
+      echo "Codeberg repo missing: https://codeberg.org/$USERNAME/$repo"
+      if command -v tea >/dev/null 2>&1; then
+        echo "  Create with: tea repos create --name $repo"
+      else
+        echo "  Create at:  https://codeberg.org/repo/create"
+      fi
+      ;;
+  esac
+}
+
+confirm() {
+  local prompt="$1"
+  local answer=""
+  read -r -p "$prompt [y/N] " answer
+  [[ "$answer" == "y" || "$answer" == "Y" || "$answer" == "yes" || "$answer" == "YES" ]]
+}
+
+main() {
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    usage
+    exit 0
+  fi
+
+  need_cmd git
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "run this inside a Git repository"
+
+  local repo="${1:-}"
+  if [[ -z "$repo" ]]; then
+    repo="$(infer_repo_name)"
+  fi
+  [[ -n "$repo" ]] || die "could not infer repository name"
+
+  local github_url="git@github.com:$USERNAME/$repo.git"
+  local srht_url="git@git.sr.ht:~$USERNAME/$repo"
+  local codeberg_url="git@codeberg.org:$USERNAME/$repo.git"
+
+  echo "Repository: $repo"
+  echo "User:       $USERNAME"
+  echo
+
+  local missing=0
+  if ! repo_exists "$github_url"; then
+    print_create_help github "$repo"
+    missing=1
+  fi
+  if ! repo_exists "$srht_url"; then
+    echo "sr.ht repo not found/reachable yet: https://git.sr.ht/~$USERNAME/$repo"
+    echo "  sr.ht can auto-create repositories when you push to: $srht_url"
+  fi
+  if ! repo_exists "$codeberg_url"; then
+    print_create_help codeberg "$repo"
+    missing=1
+  fi
+
+  if [[ "$missing" -ne 0 ]]; then
+    echo
+    echo "Create the missing GitHub/Codeberg repositories first. They should be empty repositories with the same name."
+    if ! confirm "After creating them, continue and re-check now?"; then
+      exit 1
+    fi
+    exec "$0" "$repo"
+  fi
+
+  echo "Required repositories are reachable. Configuring remotes..."
+
+  if git remote get-url "$REMOTE_NAME" >/dev/null 2>&1; then
+    git remote set-url "$REMOTE_NAME" "$github_url"
+  else
+    git remote add "$REMOTE_NAME" "$github_url"
+  fi
+
+  # Replace push URLs with exactly these three destinations. `git remote set-url --push`
+  # refuses to overwrite when multiple pushurl values already exist, so reset them
+  # through git-config first.
+  git config --unset-all "remote.$REMOTE_NAME.pushurl" >/dev/null 2>&1 || true
+  git config --add "remote.$REMOTE_NAME.pushurl" "$github_url"
+  git config --add "remote.$REMOTE_NAME.pushurl" "$srht_url"
+  git config --add "remote.$REMOTE_NAME.pushurl" "$codeberg_url"
+
+  echo
+  git remote -v
+
+  if [[ "${GIT_MIRROR_SKIP_PUSH:-}" == "1" ]]; then
+    echo
+    echo "Configured remotes. Skipping push because GIT_MIRROR_SKIP_PUSH=1."
+    exit 0
+  fi
+
+  echo
+  if confirm "Push current branch and tags to all three remotes now?"; then
+    local branch=""
+    branch="$(git symbolic-ref --quiet --short HEAD || true)"
+    if [[ -n "$branch" ]]; then
+      git push -u "$REMOTE_NAME" "$branch"
+    else
+      echo "Detached HEAD; skipping branch push."
+    fi
+    git push "$REMOTE_NAME" --tags
+  else
+    echo "Configured remotes. Push later with: git push $REMOTE_NAME <branch> && git push $REMOTE_NAME --tags"
+  fi
+}
+
+main "$@"
