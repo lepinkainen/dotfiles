@@ -16,16 +16,16 @@ if ! command -v op >/dev/null 2>&1; then
 fi
 
 PRIVATE_KEY=$(cat <<'EOF'
-{{ onepasswordRead "op://Personal/GPG Key/private_key" }}
+{{ onepasswordRead "op://Private/GPG Key/private_key" }}
 EOF
 )
 
 PUBLIC_KEY=$(cat <<'EOF'
-{{ onepasswordRead "op://Personal/GPG Key/public_key" }}
+{{ onepasswordRead "op://Private/GPG Key/public_key" }}
 EOF
 )
 
-KEY_ID="{{ onepasswordRead "op://Personal/GPG Key/key_id" }}"
+KEY_ID="{{ onepasswordRead "op://Private/GPG Key/key_id" }}"
 
 echo "$PUBLIC_KEY"  | gpg --import --batch
 echo "$PRIVATE_KEY" | gpg --import --batch
