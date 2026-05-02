@@ -1,0 +1,36 @@
+#!/bin/sh
+# Import GPG keys from 1Password.
+# Re-runs when the key in 1Password changes (template renders new content).
+# Requires: gnupg installed, `op` CLI signed in.
+
+set -eu
+
+if ! command -v gpg >/dev/null 2>&1; then
+    echo "gpg not installed, skipping import"
+    exit 0
+fi
+
+if ! command -v op >/dev/null 2>&1; then
+    echo "op CLI not installed, skipping GPG import"
+    exit 0
+fi
+
+PRIVATE_KEY=$(cat <<'EOF'
+{{ onepasswordRead "op://Personal/GPG Key/private_key" }}
+EOF
+)
+
+PUBLIC_KEY=$(cat <<'EOF'
+{{ onepasswordRead "op://Personal/GPG Key/public_key" }}
+EOF
+)
+
+KEY_ID="{{ onepasswordRead "op://Personal/GPG Key/key_id" }}"
+
+echo "$PUBLIC_KEY"  | gpg --import --batch
+echo "$PRIVATE_KEY" | gpg --import --batch
+
+# Mark key ultimately trusted (own key)
+if [ -n "$KEY_ID" ]; then
+    echo "${KEY_ID}:6:" | gpg --import-ownertrust
+fi
