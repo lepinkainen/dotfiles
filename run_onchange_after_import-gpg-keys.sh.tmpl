@@ -15,6 +15,16 @@ if ! command -v op >/dev/null 2>&1; then
     exit 0
 fi
 
+KEY_ID="{{ onepasswordRead "op://Private/GPG Key/key_id" }}"
+
+# Skip import entirely if both public and secret keys are already in the keyring.
+if [ -n "$KEY_ID" ] \
+    && gpg --list-keys "$KEY_ID" >/dev/null 2>&1 \
+    && gpg --list-secret-keys "$KEY_ID" >/dev/null 2>&1; then
+    echo "GPG key $KEY_ID already imported, skipping"
+    exit 0
+fi
+
 PRIVATE_KEY=$(cat <<'EOF'
 {{ onepasswordRead "op://Private/GPG Key/private_key" }}
 EOF
@@ -25,12 +35,23 @@ PUBLIC_KEY=$(cat <<'EOF'
 EOF
 )
 
-KEY_ID="{{ onepasswordRead "op://Private/GPG Key/key_id" }}"
+# Strip whitespace to detect empty values from 1Password
+PUBLIC_KEY_TRIMMED=$(printf '%s' "$PUBLIC_KEY" | tr -d '[:space:]')
+PRIVATE_KEY_TRIMMED=$(printf '%s' "$PRIVATE_KEY" | tr -d '[:space:]')
 
-echo "$PUBLIC_KEY"  | gpg --import --batch
-echo "$PRIVATE_KEY" | gpg --import --batch
+if [ -n "$PUBLIC_KEY_TRIMMED" ]; then
+    echo "$PUBLIC_KEY" | gpg --import --batch
+else
+    echo "Public key not available in 1Password, skipping"
+fi
 
-# Mark key ultimately trusted (own key)
-if [ -n "$KEY_ID" ]; then
+if [ -n "$PRIVATE_KEY_TRIMMED" ]; then
+    echo "$PRIVATE_KEY" | gpg --import --batch
+else
+    echo "Private key not available in 1Password, skipping"
+fi
+
+# Mark key ultimately trusted (own key) if it's now in the keyring
+if [ -n "$KEY_ID" ] && gpg --list-keys "$KEY_ID" >/dev/null 2>&1; then
     echo "${KEY_ID}:6:" | gpg --import-ownertrust
 fi
