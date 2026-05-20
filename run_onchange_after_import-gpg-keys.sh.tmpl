@@ -10,11 +10,7 @@ if ! command -v gpg >/dev/null 2>&1; then
     exit 0
 fi
 
-if ! command -v op >/dev/null 2>&1; then
-    echo "op CLI not installed, skipping GPG import"
-    exit 0
-fi
-
+{{ if lookPath "op" -}}
 KEY_ID="{{ onepasswordRead "op://Private/GPG Key/key_id" }}"
 
 # Skip import entirely if both public and secret keys are already in the keyring.
@@ -55,3 +51,7 @@ fi
 if [ -n "$KEY_ID" ] && gpg --list-keys "$KEY_ID" >/dev/null 2>&1; then
     echo "${KEY_ID}:6:" | gpg --import-ownertrust
 fi
+{{- else }}
+echo "op CLI not installed, skipping GPG import"
+exit 0
+{{- end }}
