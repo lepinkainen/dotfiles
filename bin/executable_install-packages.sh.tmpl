@@ -19,13 +19,20 @@
     "postgresql" "python3" "ripgrep" "rsync" "ruff" "shellcheck"
     "starship" "tmux" "wget" "yt-dlp" "zoxide"
 -}}
-{{/* Arch uses different names for these. */}}
+{{/* Arch uses different names for these. Empty value = drop (AUR only). */}}
 {{- $arch_renames := dict
     "fd-find" "fd"
     "pinentry-tty" "pinentry"
     "golang-go" "go"
     "python3" "python"
+    "awscli" "aws-cli"
+    "black" "python-black"
+    "gh" "github-cli"
+    "pipenv" "python-pipenv"
     "git-secrets" ""
+    "ack" ""
+    "gallery-dl" ""
+    "icdiff" ""
 -}}
 {{/* Packages only in Arch repos (pacman extra), not in Debian/Ubuntu main. */}}
 {{- $arch_extras := list "duckdb" "lazygit" "yazi" -}}
@@ -66,7 +73,7 @@ echo "Installing: $PACKAGES"
 sudo pacman -Syu --noconfirm $PACKAGES
 echo ""
 echo "Not in official Arch repos — install via AUR or separately if needed:"
-echo "  git-secrets, doctl, terraform, watchman, uv, llm, gemini-cli, claude-code"
+echo "  ack, gallery-dl, icdiff, git-secrets, doctl, terraform, watchman, uv, llm, gemini-cli, claude-code"
 {{ else -}}
 echo "Unsupported Linux distribution: {{ $osid }}"
 echo "Please install the following packages manually:"
