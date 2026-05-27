@@ -16,7 +16,7 @@
     "gallery-dl" "gh" "git" "git-delta" "git-lfs" "git-secrets" "gnupg"
     "golang-go" "httpie" "icdiff" "imagemagick" "jo" "jq"
     "less" "mosh" "neovim" "nodejs" "pinentry-tty" "pipenv"
-    "postgresql" "python3" "ripgrep" "rsync" "ruff" "shellcheck"
+    "postgresql" "python3" "ripgrep" "rsync" "shellcheck"
     "starship" "tmux" "wget" "yt-dlp" "zoxide"
 -}}
 {{/* Arch uses different names for these. Empty value = drop (AUR only). */}}
@@ -35,7 +35,7 @@
     "icdiff" ""
 -}}
 {{/* Packages only in Arch repos (pacman extra), not in Debian/Ubuntu main. */}}
-{{- $arch_extras := list "duckdb" "helix" "lazygit" "yazi" -}}
+{{- $arch_extras := list "duckdb" "helix" "lazygit" "ruff" "yazi" -}}
 #!/bin/sh
 set -e
 
@@ -50,7 +50,7 @@ echo "Installing packages: $PACKAGES"
 sudo apt install -y $PACKAGES
 echo ""
 echo "Note: on Debian stable (bookworm), some packages live only in trixie/sid:"
-echo "  atuin, eza, ruff, yt-dlp, git-delta"
+echo "  atuin, eza, yt-dlp, git-delta"
 echo "Enable backports or upgrade if any of these fail."
 echo "Not packaged for apt — install separately if needed:"
 echo "  duckdb, lazygit, doctl, terraform, watchman, uv, llm, gemini-cli, claude-code"
