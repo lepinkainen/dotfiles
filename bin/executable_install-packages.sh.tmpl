@@ -3,32 +3,74 @@
 {{- if hasKey .chezmoi.osRelease "id" -}}
 {{-   $osid = printf "%s-%s" .chezmoi.os .chezmoi.osRelease.id -}}
 {{- end -}}
-{{- $base_packages := "tmux atuin starship ack eza bat direnv fastfetch fish httpie wget rsync pinentry-tty btop fd-find ripgrep zoxide neovim" -}}
-{{- $arch_packages := replace (replace $base_packages "fd-find" "fd") "pinentry-tty" "pinentry" -}}
+{{/*
+  Master CLI list — Debian/apt names. Linux mirror of the macOS Brewfile.
+  Skipped (not in standard repos / installed separately): uv, llm, gemini-cli,
+  claude-code, codex, watchman, doctl, terraform, go-task, gofumpt, golangci-lint,
+  gopls, goimports, dust. Skipped (macOS-only): mas, pinentry-mac.
+  Note: coreutils is part of every Linux base install — `timeout` is always present.
+*/}}
+{{- $packages := list
+    "ack" "atuin" "awscli" "bat" "black" "btop" "curl"
+    "direnv" "eza" "fastfetch" "fd-find" "ffmpeg" "fish" "fzf"
+    "gallery-dl" "gh" "git" "git-delta" "git-lfs" "git-secrets" "gnupg"
+    "golang-go" "helix" "httpie" "icdiff" "imagemagick" "jo" "jq"
+    "less" "mosh" "neovim" "nodejs" "pinentry-tty" "pipenv"
+    "postgresql" "python3" "ripgrep" "rsync" "ruff" "shellcheck"
+    "starship" "tmux" "wget" "yt-dlp" "zoxide"
+-}}
+{{/* Arch uses different names for these. */}}
+{{- $arch_renames := dict
+    "fd-find" "fd"
+    "pinentry-tty" "pinentry"
+    "golang-go" "go"
+    "python3" "python"
+    "git-secrets" ""
+-}}
+{{/* Packages only in Arch repos (pacman extra), not in Debian/Ubuntu main. */}}
+{{- $arch_extras := list "duckdb" "lazygit" "yazi" -}}
 #!/bin/sh
 set -e
 
 echo "Installing packages for Linux ({{ $osid }})..."
 
-{{ if eq $osid "linux-debian" -}}
-# Debian
+{{ if or (eq $osid "linux-debian") (eq $osid "linux-ubuntu") -}}
+# Debian / Ubuntu
 echo "Updating package lists..."
 sudo apt update
-echo "Installing packages: {{ $base_packages }}"
-sudo apt install -y {{ $base_packages }}
-{{ else if eq $osid "linux-ubuntu" -}}
-# Ubuntu
-echo "Updating package lists..."
-sudo apt update
-echo "Installing packages: {{ $base_packages }}"
-sudo apt install -y {{ $base_packages }}
+PACKAGES="{{ join " " $packages }}"
+echo "Installing packages: $PACKAGES"
+sudo apt install -y $PACKAGES
+echo ""
+echo "Note: on Debian stable (bookworm), some packages live only in trixie/sid:"
+echo "  atuin, eza, helix, ruff, yt-dlp, git-delta"
+echo "Enable backports or upgrade if any of these fail."
+echo "Not packaged for apt — install separately if needed:"
+echo "  duckdb, lazygit, doctl, terraform, watchman, uv, llm, gemini-cli, claude-code"
 {{ else if eq $osid "linux-arch" -}}
+{{- $arch_pkgs := list -}}
+{{- range $packages -}}
+{{-   if hasKey $arch_renames . -}}
+{{-     $renamed := get $arch_renames . -}}
+{{-     if ne $renamed "" -}}
+{{-       $arch_pkgs = append $arch_pkgs $renamed -}}
+{{-     end -}}
+{{-   else -}}
+{{-     $arch_pkgs = append $arch_pkgs . -}}
+{{-   end -}}
+{{- end -}}
+{{- range $arch_extras -}}{{- $arch_pkgs = append $arch_pkgs . -}}{{- end }}
 # Arch Linux
-echo "Updating system and installing packages: {{ $arch_packages }}"
-sudo pacman -Syu --noconfirm {{ $arch_packages }}
+PACKAGES="{{ join " " $arch_pkgs }}"
+echo "Installing: $PACKAGES"
+sudo pacman -Syu --noconfirm $PACKAGES
+echo ""
+echo "Not in official Arch repos — install via AUR or separately if needed:"
+echo "  git-secrets, doctl, terraform, watchman, uv, llm, gemini-cli, claude-code"
 {{ else -}}
 echo "Unsupported Linux distribution: {{ $osid }}"
-echo "Please install the following packages manually: {{ $base_packages }}"
+echo "Please install the following packages manually:"
+echo "  {{ join " " $packages }}"
 exit 1
 {{ end -}}
 
