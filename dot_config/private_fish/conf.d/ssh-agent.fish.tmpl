@@ -1,0 +1,6 @@
+{{- if eq .chezmoi.hostname "endymion" -}}
+# Use systemd user ssh-agent socket (socket-activated, persists across shells).
+if test -S /run/user/(id -u)/openssh_agent
+    set -gx SSH_AUTH_SOCK /run/user/(id -u)/openssh_agent
+end
+{{- end }}
