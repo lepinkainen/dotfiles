@@ -1,5 +1,6 @@
 ---
 description: Create atomic git commits using conventional commits.
+model: claude-sonnet-4-6
 ---
 
 # Commit
