@@ -11,7 +11,7 @@
   Note: coreutils is part of every Linux base install — `timeout` is always present.
 */}}
 {{- $packages := list
-    "ack" "atuin" "awscli" "bat" "black" "btop" "curl"
+    "ack" "age" "atuin" "awscli" "bat" "black" "btop" "curl"
     "direnv" "eza" "fastfetch" "fd-find" "ffmpeg" "fish" "fzf"
     "gallery-dl" "gh" "git" "git-delta" "git-lfs" "git-secrets" "gnupg"
     "golang-go" "httpie" "icdiff" "imagemagick" "jo" "jq"
@@ -122,7 +122,7 @@ fi
 
 # Install fonts
 echo "Installing fonts..."
-for font in font-fira-mono-nerd-font font-fira-code-nerd-font font-fira-code font-fira-mono; do
+for font in font-jetbrains-mono-nerd-font font-fira-mono-nerd-font font-fira-code-nerd-font font-fira-code font-fira-mono; do
     if ! brew list --cask "$font" &> /dev/null; then
         echo "Installing $font..."
         brew install "$font"
