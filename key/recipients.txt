@@ -1,0 +1,8 @@
+# age recipients for encrypted chezmoi files (public keys — safe to commit).
+# Add a machine's pubkey here, then `chezmoi re-add <file>` from any machine
+# that can decrypt, and commit. Every recipient can then decrypt.
+age18ksy4tumwk54ax2vy4qu6dcqlg5t642gemtelhc5lauml8kphy4qea8pm5
+age1pl9sf2gmazjgn6u5awg2j2g2089hg99pvj80mzy02pydpfjvt5xq66swup
+age1nn4y827m3p8s6depyy2syat8q353nheaqwcttq4fj0fzntfhfp9sy6dskd
+age1zfq96ytr5hs4tka57lddtee9en6wf8ctduhq2ny60nhut9k08qfq8dx7za # gambit
+age1dz4hp8f4nhfna2hkp4n354d37fahhthzscfl2k330rdeuspq83mqchfvv3 # mystique

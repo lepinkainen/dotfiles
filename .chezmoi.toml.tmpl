@@ -1,0 +1,16 @@
+{{/* Generates ~/.config/chezmoi/chezmoi.toml on `chezmoi init`.
+     Bootstrap: place the age private key at ~/.config/chezmoi/key.txt before
+     `chezmoi apply` (copy from another machine / 1Password, or `age-keygen`).
+     The private key is never committed; only public keys live in key/recipients.txt. */}}
+encryption = "age"
+
+[data]
+    email = "riku.lindblad@iki.fi"
+    name = "Riku Lindblad"
+
+[diff]
+    pager = "delta"
+
+[age]
+    identity = "~/.config/chezmoi/key.txt"
+    recipientsFile = "{{ .chezmoi.sourceDir }}/key/recipients.txt"
