@@ -11,7 +11,8 @@ This is a personal dotfiles repository managed with [chezmoi](https://www.chezmo
 - **Chezmoi templating**: Files use Go templates with OS-specific conditional logic (`.chezmoi.os`, `.chezmoi.osRelease`)
 - **Cross-platform support**: macOS (Homebrew), Ubuntu/Debian (apt), and Arch Linux (pacman)
 - **Modular configs**: Each application has its own directory under `dot_config/`
-- **External dependencies**: Managed via `.chezmoiexternal.toml` (tmux plugins, fzf, etc.)
+- **External dependencies**: Managed via `.chezmoiexternal.toml` (tmux tpm, fisher, fonts)
+- **Secrets**: age-encrypted files (`encrypted_*.age`); recipients in `key/recipients.txt`
 
 ## Common Commands
 
@@ -131,9 +132,9 @@ The install script runs automatically on `chezmoi apply` when npmfile changes.
 ### External Dependencies
 
 Some tools are installed via `.chezmoiexternal.toml.tmpl`:
-- Git repositories (tpm, fzf, base16-shell)
+- Git repositories (tpm)
 - Downloaded files (fisher)
-- Archives (JetBrains Mono Nerd Font)
+- Archives (JetBrains Mono Nerd Font — Linux only; macOS gets it via brew cask)
 
 To add a new external dependency:
 ```toml
@@ -142,3 +143,40 @@ To add a new external dependency:
     url = "https://github.com/user/repo.git"
     refreshPeriod = "168h"
 ```
+
+## Secrets / Encryption (age)
+
+Encrypted files use [age](https://age-encryption.org). Source files are named
+`encrypted_*.age` (e.g. `private_dot_ssh/encrypted_config.age` → `~/.ssh/config`).
+
+### Config
+
+Each machine's `~/.config/chezmoi/chezmoi.toml` (NOT committed) declares:
+```toml
+encryption = "age"
+[age]
+    identity = "~/.config/chezmoi/key.txt"
+    recipientsFile = "~/.local/share/chezmoi/key/recipients.txt"
+```
+- `identity` = this machine's age **private** key (`key.txt`, machine-local, never committed).
+- `recipientsFile` = shared list of all machines' **public** keys, committed at
+  `key/recipients.txt`. `key/` is in `.chezmoiignore` so it is not deployed to `~`.
+
+Decryption needs only `identity`. Encryption (`chezmoi re-add` / `chezmoi edit`)
+encrypts to every pubkey in `recipientsFile`.
+
+### Adding a new machine
+
+1. On the new machine: `age-keygen -o ~/.config/chezmoi/key.txt`, note its public key.
+2. Append the pubkey to `key/recipients.txt` (one per line, `# name` comment).
+3. From any machine that can already decrypt, re-encrypt and push:
+   ```bash
+   chezmoi re-add ~/.ssh/config
+   chezmoi git -- add . && chezmoi git -- commit -m "chore: add recipient" && chezmoi git -- push
+   ```
+4. New machine: `chezmoi update` — its key is now a baked recipient.
+
+**Gotcha:** adding a pubkey to `recipientsFile` does nothing to existing `.age`
+files until they are re-encrypted (`chezmoi re-add`) and committed. A machine whose
+key was added but never re-encrypted into a file gets
+`age: error: no identity matched any of the recipients`.
