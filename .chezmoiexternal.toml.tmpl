@@ -1,6 +1,6 @@
 [".config/fish/functions/fisher.fish"]
     type = "file"
-    url = "https://git.io/fisher"
+    url = "https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish"
     refreshPeriod = "168h"
 
 [".tmux/plugins/tpm"]
@@ -8,28 +8,8 @@
     url = "https://github.com/tmux-plugins/tpm.git"
     refreshPeriod = "168h"
 
-[".config/base16-shell"]
-    type = "git-repo"
-    url = "https://github.com/chriskempson/base16-shell.git"
-    refreshPeriod = "168h"
-
-[".fzf"]
-    type = "git-repo"
-    url = "https://github.com/junegunn/fzf.git"
-    refreshPeriod = "168h"
-    [".fzf".clone]
-        args = ["--depth", "1"]
-    [".fzf".pull]
-        args = ["--ff-only"]
-
-{{ if eq .chezmoi.os "darwin" }}
-# JetBrains Mono Nerd Font for macOS
-["Library/Fonts/JetBrainsMono"]
-    type = "archive"
-    url = "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/JetBrainsMono.tar.xz"
-    refreshPeriod = "720h"
-{{ else if eq .chezmoi.os "linux" }}
-# JetBrains Mono Nerd Font for Linux
+{{ if eq .chezmoi.os "linux" }}
+# JetBrains Mono Nerd Font for Linux (macOS installs via brew cask)
 [".local/share/fonts/JetBrainsMono"]
     type = "archive"
     url = "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/JetBrainsMono.tar.xz"
