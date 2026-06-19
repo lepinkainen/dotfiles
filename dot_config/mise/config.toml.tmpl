@@ -94,9 +94,57 @@ experimental = true
 # "com.apple.dock"   = { autohide = true, tilesize = 48 }
 # "NSGlobalDomain"   = { KeyRepeat = 2, InitialKeyRepeat = 15, AppleShowAllExtensions = true }
 
+{{ else if eq .chezmoi.os "linux" -}}
+# ---------------------------------------------------------------------------
+# Linux — personal Debian VMs/VPSs.
+# Unlike macOS there is no brew dependency tangle, so runtimes AND modern CLI
+# tools live in mise [tools] (latest prebuilt binaries, cross-distro). apt only
+# provides the base system + shell + things mise shouldn't own.
+# ---------------------------------------------------------------------------
+
+[tools]
+# Runtimes (clean on Linux — no dependent system packages blocking them).
+node = "lts"
+go = "latest"
+# Modern CLI tools apt lacks or ships stale — mise pulls prebuilt binaries.
+eza = "latest"
+zoxide = "latest"
+starship = "latest"
+atuin = "latest"
+lazygit = "latest"
+delta = "latest"      # git-delta
+fd = "latest"
+ripgrep = "latest"
+bat = "latest"
+fzf = "latest"
+gh = "latest"
+neovim = "latest"
+fastfetch = "latest"
+dust = "latest"
+
+[bootstrap.packages]
+{{ if eq (.chezmoi.osRelease.id | default "") "debian" -}}
+# Base system + shell + tools better owned by apt (system integration, build deps).
+"apt:fish" = "latest"
+"apt:tmux" = "latest"
+"apt:git" = "latest"
+"apt:curl" = "latest"
+"apt:wget" = "latest"
+"apt:rsync" = "latest"
+"apt:mosh" = "latest"
+"apt:gnupg" = "latest"
+"apt:pinentry-tty" = "latest"
+"apt:python3" = "latest"
+"apt:less" = "latest"
+"apt:htop" = "latest"
+"apt:btop" = "latest"
+"apt:jq" = "latest"
+"apt:ca-certificates" = "latest"
+"apt:build-essential" = "latest"
 {{ else -}}
-# ---------------------------------------------------------------------------
-# Linux (placeholder — apt/pacman branch added in a later iteration)
-# ---------------------------------------------------------------------------
+# TODO: Arch (pacman:) branch — add when an Arch host is in scope.
+{{ end -}}
+
+{{ else -}}
 [tools]
 {{ end -}}
