@@ -141,6 +141,10 @@ dust = "latest"
 "apt:jq" = "latest"
 "apt:ca-certificates" = "latest"
 "apt:build-essential" = "latest"
+"apt:direnv" = "latest"
+"apt:httpie" = "latest"
+"apt:duf" = "latest"
+"apt:figlet" = "latest"
 {{ else if eq (.chezmoi.osRelease.id | default "") "arch" -}}
 # Same base system, Arch package names (pinentry, python, base-devel).
 "pacman:fish" = "latest"
@@ -159,6 +163,10 @@ dust = "latest"
 "pacman:jq" = "latest"
 "pacman:ca-certificates" = "latest"
 "pacman:base-devel" = "latest"
+"pacman:direnv" = "latest"
+"pacman:httpie" = "latest"
+"pacman:duf" = "latest"
+"pacman:figlet" = "latest"
 {{ else -}}
 # Unknown Linux distro: {{ .chezmoi.osRelease.id | default "?" }} — add a branch.
 {{ end -}}
