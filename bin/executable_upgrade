@@ -23,13 +23,23 @@ else
     exit 1
 fi
 
-NPM_CMD="echo \"=== npm global (min age: ${MIN_AGE_DAYS}d) ===\" && npm outdated -g --depth=0 --min-release-age=${MIN_AGE_DAYS} || true && echo && npm update -g --min-release-age=${MIN_AGE_DAYS} && echo && echo \"✓ npm done. Press enter to close.\" && read"
+# mise-managed dev tools (node, etc.) — OS-agnostic. Runs in the tools pane
+# before npm, since npm comes from the node that mise manages. `mise upgrade`
+# keeps the ranges pinned in config (e.g. node@lts) and bumps within them.
+MISE_CMD='command -v mise >/dev/null 2>&1 && { echo "=== mise ===" && mise upgrade && echo; } || true'
+
+NPM_CMD="${MISE_CMD} && echo \"=== npm global (min age: ${MIN_AGE_DAYS}d) ===\" && npm outdated -g --depth=0 --min-release-age=${MIN_AGE_DAYS} || true && echo && npm update -g --min-release-age=${MIN_AGE_DAYS} && echo && echo \"✓ mise + npm done. Press enter to close.\" && read"
 
 if ! command -v tmux &>/dev/null; then
     # No tmux — run sequentially
     echo "=== ${PKG_NAME} ==="
     PKG_SEQ
     echo
+    if command -v mise &>/dev/null; then
+        echo "=== mise ==="
+        mise upgrade
+        echo
+    fi
     echo "=== npm global (min age: ${MIN_AGE_DAYS}d) ==="
     npm outdated -g --depth=0 --min-release-age="$MIN_AGE_DAYS" || true
     echo
