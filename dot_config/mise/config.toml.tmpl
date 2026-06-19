@@ -1,0 +1,96 @@
+# Global mise config. Rendered by chezmoi per-OS.
+#
+# Ownership (see ansible repo migration plan):
+#   mise            -> system packages (formulae) + versioned dev runtimes + bootstrap tasks
+#   chezmoi         -> dotfiles, secrets (age), and CASKS via Brewfile/run_onchange
+#                      (mise's brew backend does NOT support casks)
+#   direnv          -> per-project env (kept minimal)
+#
+# Manual flow for now:  mise bootstrap   (not wired into run_onchange yet)
+
+[settings]
+# `mise bootstrap` is experimental in 2026.6.x and refuses to run without this.
+experimental = true
+
+{{ if eq .chezmoi.os "darwin" -}}
+# ---------------------------------------------------------------------------
+# macOS
+# ---------------------------------------------------------------------------
+
+[tools]
+# Versioned dev runtimes — mise's core strength (moved out of Brewfile).
+node = "lts"
+go = "latest"
+terraform = "latest"
+# NOTE: python/uv/pipenv intentionally left in Brewfile for now to avoid
+# disrupting the existing python toolchain. Move here later if desired.
+
+[bootstrap.packages]
+# Homebrew FORMULAE only (casks remain in Brewfile). Ported from Brewfile.
+"brew:ack" = "latest"
+"brew:atuin" = "latest"
+"brew:awscli" = "latest"
+"brew:bat" = "latest"
+"brew:black" = "latest"
+"brew:btop" = "latest"
+"brew:curl" = "latest"
+"brew:direnv" = "latest"
+"brew:doctl" = "latest"
+"brew:dust" = "latest"
+"brew:eza" = "latest"
+"brew:fastfetch" = "latest"
+"brew:fd" = "latest"
+"brew:fish" = "latest"
+"brew:fzf" = "latest"
+"brew:gallery-dl" = "latest"
+"brew:gemini-cli" = "latest"
+"brew:gh" = "latest"
+"brew:git" = "latest"
+"brew:git-delta" = "latest"
+"brew:git-lfs" = "latest"
+"brew:git-secrets" = "latest"
+"brew:goimports" = "latest"
+"brew:golangci-lint" = "latest"
+"brew:gopls" = "latest"
+"brew:gofumpt" = "latest"
+"brew:go-task" = "latest"
+"brew:helix" = "latest"
+"brew:httpie" = "latest"
+"brew:icdiff" = "latest"
+"brew:jo" = "latest"
+"brew:jq" = "latest"
+"brew:less" = "latest"
+"brew:llm" = "latest"
+"brew:mas" = "latest"
+"brew:mosh" = "latest"
+"brew:pinentry-mac" = "latest"
+"brew:neovim" = "latest"
+"brew:pipenv" = "latest"
+"brew:postgresql@18" = "latest"
+"brew:python" = "latest"
+"brew:ripgrep" = "latest"
+"brew:rsync" = "latest"
+"brew:shellcheck" = "latest"
+"brew:starship" = "latest"
+"brew:tmux" = "latest"
+"brew:uv" = "latest"
+"brew:watch" = "latest"
+"brew:watchman" = "latest"
+"brew:wget" = "latest"
+"brew:yarn" = "latest"
+"brew:yazi" = "latest"
+"brew:zoxide" = "latest"
+
+# [bootstrap.macos.defaults]
+# Dock/Finder/keyboard tweaks — opinionated, enable what you want, then
+# `mise bootstrap macos-defaults apply`. Examples (commented until you choose):
+# "com.apple.finder" = { AppleShowAllExtensions = true, ShowPathbar = true, _FXSortFoldersFirst = true }
+# "com.apple.dock"   = { autohide = true, tilesize = 48 }
+# "NSGlobalDomain"   = { KeyRepeat = 2, InitialKeyRepeat = 15, AppleShowAllExtensions = true }
+
+{{ else -}}
+# ---------------------------------------------------------------------------
+# Linux (placeholder — apt/pacman branch added in a later iteration)
+# ---------------------------------------------------------------------------
+[tools]
+{{ end -}}
