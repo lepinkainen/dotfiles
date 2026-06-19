@@ -130,6 +130,11 @@ if [ -d $HOME/.local/bin ] ; then
     PATH=$HOME/.local/bin:"${PATH}"
 fi
 
+# Activate mise if installed
+if command -v mise >/dev/null 2>&1; then
+    eval "$(mise activate bash)"
+fi
+
 # for emacs..
 #export TERM=xterm-256color
 
@@ -166,10 +171,12 @@ function tmux_bg(){
 eval "$(starship init bash)"
 
 # Initialise Atuin
-. "$HOME/.atuin/bin/env"
+[[ -f "$HOME/.atuin/bin/env" ]] && . "$HOME/.atuin/bin/env"
 
-[[ -f ~/.bash-preexec.sh ]] && source ~/.bash-preexec.sh
-eval "$(atuin init bash --disable-up-arrow)"
+if command -v atuin >/dev/null 2>&1; then
+  [[ -f ~/.bash-preexec.sh ]] && source ~/.bash-preexec.sh
+  eval "$(atuin init bash --disable-up-arrow)"
+fi
 
 # Always have a tmux session active
 #if [ -z "$TMUX" ] && [ ${UID} != 0 ]
