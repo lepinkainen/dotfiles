@@ -1,0 +1,25 @@
+# POC base: Arch Linux with mise + chezmoi baked in. Provisioning is driven by
+# `mise bootstrap` against the mounted dotfiles config, NOT this Dockerfile.
+# Arch Linux ARM (official archlinux:latest is x86_64-only, no arm64 manifest).
+# pacman + package names match upstream Arch, so it validates the pacman branch.
+FROM menci/archlinuxarm:latest
+
+# Minimal prereqs; let mise drive pacman for the rest. Base already has
+# curl/ca-certificates, so only add sudo+git (avoids a curl file-conflict from a
+# partial upgrade). --disable-sandbox: pacman landlock fails inside docker build.
+RUN pacman -Sy --noconfirm --needed --disable-sandbox sudo git \
+    && pacman -Scc --noconfirm
+
+ARG USER=riku
+RUN useradd -m -s /bin/bash "$USER" \
+    && echo "$USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USER
+
+USER ${USER}
+ENV USER=${USER}
+WORKDIR /home/${USER}
+
+RUN curl -fsSL https://mise.run | sh
+ENV PATH="/home/${USER}/.local/bin:${PATH}"
+RUN curl -fsSL get.chezmoi.io | sh -s -- -b /home/${USER}/.local/bin
+
+CMD ["bash"]
