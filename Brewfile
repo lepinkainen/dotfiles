@@ -1,63 +1,11 @@
-# CLI Tools
-brew "ack"
-brew "atuin"
-brew "awscli"
-brew "bat"
-brew "black"
-brew "btop"
-brew "curl"
-brew "direnv"
-brew "doctl"
-brew "dust"
-brew "eza"
-brew "fastfetch"
-brew "fd"
-brew "fish"
-brew "fzf"
-brew "gallery-dl"
-brew "gemini-cli"
-brew "gh"
-brew "git"
-brew "gnupg"
-brew "git-delta"
-brew "git-lfs"
-brew "git-secrets"
-brew "go"
-brew "goimports"
-brew "golangci-lint"
-brew "gopls"
-brew "gofumpt"
-brew "go-task"
-brew "helix"
-brew "httpie"
-brew "icdiff"
-brew "jo"
-brew "jq"
-brew "lazygit"
-brew "less"
-brew "llm"
-brew "mas"
-brew "mosh"
-brew "node"
-brew "pinentry-mac"
-brew "nvim"
-brew "pipenv"
-brew "postgresql"
-brew "python"
-brew "ripgrep"
-brew "rsync"
-brew "shellcheck"
-brew "starship"
-brew "tmux"
-brew "uv"
-brew "watch"
-brew "watchman"
-brew "wget"
-brew "yarn"
-brew "yazi"
-brew "zoxide"
-#brew "youtube-dl"
-#brew "yle-dl"
+# Homebrew bundle — CASKS ONLY.
+#
+# CLI tool FORMULAE moved to mise: ~/.config/mise/config.toml
+# ([bootstrap.packages] "brew:*" + [tools]). Run `mise bootstrap` to install them.
+# Casks stay here because mise's brew backend cannot install casks.
+#
+# NOTE: never run `brew bundle cleanup`/`--force` — it would uninstall every
+# formula not listed here (i.e. all the mise-managed ones).
 
 # Applications
 cask "1password"
@@ -73,4 +21,3 @@ cask "transmit"
 
 #mas "Parcel", id: 639968404
 #mas "PiPifier", id: 1160374471
-
