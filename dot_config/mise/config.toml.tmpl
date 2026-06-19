@@ -141,8 +141,26 @@ dust = "latest"
 "apt:jq" = "latest"
 "apt:ca-certificates" = "latest"
 "apt:build-essential" = "latest"
+{{ else if eq (.chezmoi.osRelease.id | default "") "arch" -}}
+# Same base system, Arch package names (pinentry, python, base-devel).
+"pacman:fish" = "latest"
+"pacman:tmux" = "latest"
+"pacman:git" = "latest"
+"pacman:curl" = "latest"
+"pacman:wget" = "latest"
+"pacman:rsync" = "latest"
+"pacman:mosh" = "latest"
+"pacman:gnupg" = "latest"
+"pacman:pinentry" = "latest"
+"pacman:python" = "latest"
+"pacman:less" = "latest"
+"pacman:htop" = "latest"
+"pacman:btop" = "latest"
+"pacman:jq" = "latest"
+"pacman:ca-certificates" = "latest"
+"pacman:base-devel" = "latest"
 {{ else -}}
-# TODO: Arch (pacman:) branch — add when an Arch host is in scope.
+# Unknown Linux distro: {{ .chezmoi.osRelease.id | default "?" }} — add a branch.
 {{ end -}}
 
 {{ else -}}
