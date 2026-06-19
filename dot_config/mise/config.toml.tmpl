@@ -18,11 +18,12 @@ experimental = true
 # ---------------------------------------------------------------------------
 
 [tools]
-# Versioned dev runtimes — mise's core strength (moved out of Brewfile).
-node = "lts"
-# NOTE: `go` intentionally stays in brew (below). The go-tooling formulae
-# (gofumpt, golangci-lint, gopls, goimports, go-task) depend on brew's go, so
-# brew refuses to remove it. See README.md "Path B" to move go fully to mise.
+# (empty for now — no runtimes are mise-managed yet.)
+# NOTE: `go` and `node` intentionally stay in brew (below). Brew formulae depend
+# on them — go: gofumpt/golangci-lint/gopls/goimports/go-task; node:
+# gemini-cli/opencode/typescript/typescript-language-server/vscode-langservers-extracted
+# — so `brew uninstall` is refused while those exist. See README.md "Path B" to
+# move a runtime fully to mise.
 # NOTE: python/uv/pipenv also left in Brewfile for now to avoid disrupting the
 # existing python toolchain. Move here later if desired.
 
@@ -67,6 +68,7 @@ node = "lts"
 "brew:llm" = "latest"
 "brew:mas" = "latest"
 "brew:mosh" = "latest"
+"brew:node" = "latest"
 "brew:pinentry-mac" = "latest"
 "brew:neovim" = "latest"
 "brew:pipenv" = "latest"
