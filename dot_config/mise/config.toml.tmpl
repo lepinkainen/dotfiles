@@ -107,6 +107,10 @@ experimental = true
 node = "lts"
 go = "latest"
 # Modern CLI tools apt lacks or ships stale — mise pulls prebuilt binaries.
+# age: required to decrypt .ssh/config during chezmoi bootstrap. Install it
+# BEFORE first `chezmoi apply` with `mise use -g age@latest` (this entry keeps
+# it managed/converged afterwards). Rootless — works on hosts without sudo.
+age = "latest"
 eza = "latest"
 zoxide = "latest"
 starship = "latest"

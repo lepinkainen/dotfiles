@@ -8,10 +8,11 @@
   Skipped (not in standard repos / installed separately): uv, llm, gemini-cli,
   claude-code, codex, watchman, doctl, terraform, go-task, gofumpt, golangci-lint,
   gopls, goimports, dust. Skipped (macOS-only): mas, pinentry-mac.
+  Skipped (mise-managed, rootless, needed pre-bootstrap to decrypt): age.
   Note: coreutils is part of every Linux base install — `timeout` is always present.
 */}}
 {{- $packages := list
-    "ack" "age" "atuin" "awscli" "bat" "black" "btop" "curl"
+    "ack" "atuin" "awscli" "bat" "black" "btop" "curl"
     "direnv" "eza" "fastfetch" "fd-find" "ffmpeg" "fish" "fzf"
     "gallery-dl" "gh" "git" "git-delta" "git-lfs" "git-secrets" "gnupg"
     "golang-go" "httpie" "icdiff" "imagemagick" "jo" "jq"
