@@ -21,7 +21,6 @@ experimental = true
 # Versioned dev runtimes — mise's core strength (moved out of Brewfile).
 node = "lts"
 go = "latest"
-terraform = "latest"
 # NOTE: python/uv/pipenv intentionally left in Brewfile for now to avoid
 # disrupting the existing python toolchain. Move here later if desired.
 
@@ -81,10 +80,10 @@ terraform = "latest"
 "brew:yazi" = "latest"
 "brew:zoxide" = "latest"
 
-# [bootstrap.macos.defaults]
+[bootstrap.macos.defaults]
 # Dock/Finder/keyboard tweaks — opinionated, enable what you want, then
 # `mise bootstrap macos-defaults apply`. Examples (commented until you choose):
-# "com.apple.finder" = { AppleShowAllExtensions = true, ShowPathbar = true, _FXSortFoldersFirst = true }
+"com.apple.finder" = { AppleShowAllExtensions = true, ShowPathbar = true, _FXSortFoldersFirst = true }
 # "com.apple.dock"   = { autohide = true, tilesize = 48 }
 # "NSGlobalDomain"   = { KeyRepeat = 2, InitialKeyRepeat = 15, AppleShowAllExtensions = true }
 
