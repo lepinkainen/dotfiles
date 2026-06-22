@@ -1,6 +1,7 @@
 #!/bin/sh
 # Import GPG keys from 1Password.
-# Re-runs when the key in 1Password changes (template renders new content).
+# Idempotent: skips entirely (no 1Password unlock) when the key is already in
+# the keyring. Reads secrets at runtime via `op`, only when the key is missing.
 # Requires: gnupg installed, `op` CLI signed in.
 
 set -eu
@@ -11,38 +12,34 @@ if ! command -v gpg >/dev/null 2>&1; then
 fi
 
 {{ if lookPath "op" -}}
-KEY_ID="{{ onepasswordRead "op://Private/GPG Key/key_id" }}"
+# Key fingerprint is public info, hardcoded so the already-imported guard runs
+# WITHOUT touching 1Password (no unlock prompt on every chezmoi apply).
+KEY_ID="1EEF79895C978A0B"
 
 # Skip import entirely if both public and secret keys are already in the keyring.
-if [ -n "$KEY_ID" ] \
-    && gpg --list-keys "$KEY_ID" >/dev/null 2>&1 \
+# This returns before any `op` call, so 1Password stays locked.
+if gpg --list-keys "$KEY_ID" >/dev/null 2>&1 \
     && gpg --list-secret-keys "$KEY_ID" >/dev/null 2>&1; then
     echo "GPG key $KEY_ID already imported, skipping"
     exit 0
 fi
 
-PRIVATE_KEY=$(cat <<'EOF'
-{{ onepasswordRead "op://Private/GPG Key/private_key" }}
-EOF
-)
-
-PUBLIC_KEY=$(cat <<'EOF'
-{{ onepasswordRead "op://Private/GPG Key/public_key" }}
-EOF
-)
+# Key missing — fetch from 1Password at runtime (this is what triggers unlock).
+PRIVATE_KEY=$(op read "op://Private/GPG Key/private_key" 2>/dev/null || true)
+PUBLIC_KEY=$(op read "op://Private/GPG Key/public_key" 2>/dev/null || true)
 
 # Strip whitespace to detect empty values from 1Password
 PUBLIC_KEY_TRIMMED=$(printf '%s' "$PUBLIC_KEY" | tr -d '[:space:]')
 PRIVATE_KEY_TRIMMED=$(printf '%s' "$PRIVATE_KEY" | tr -d '[:space:]')
 
 if [ -n "$PUBLIC_KEY_TRIMMED" ]; then
-    echo "$PUBLIC_KEY" | gpg --import --batch
+    echo "$PUBLIC_KEY" | gpg --import --batch || echo "Public key import failed, continuing"
 else
     echo "Public key not available in 1Password, skipping"
 fi
 
 if [ -n "$PRIVATE_KEY_TRIMMED" ]; then
-    echo "$PRIVATE_KEY" | gpg --import --batch
+    echo "$PRIVATE_KEY" | gpg --import --batch || echo "Private key import failed, continuing"
 else
     echo "Private key not available in 1Password, skipping"
 fi
