@@ -10,10 +10,10 @@
 # Applications
 cask "1password"
 cask "1password-cli"
-cask "claude-code"
+#cask "claude-code"
 cask "codex"
-cask "firefox"
-cask "fork"
+#cask "firefox"
+#cask "fork"
 cask "iina"
 cask "telegram-desktop"
 cask "transmit"
