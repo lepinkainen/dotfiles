@@ -9,11 +9,6 @@
 # XDG base directory
 set -gx XDG_CONFIG_HOME ~/.config
 
-# Generic binaries
-if test -d "$HOME/bin/"
-    set -gx fish_user_paths $HOME/bin/ $fish_user_paths
-end
-
 # More generic local binaries
 if test -d "$HOME/.local/bin/"
     set -gx fish_user_paths $HOME/.local/bin/ $fish_user_paths
@@ -46,6 +41,11 @@ end
 
 # For Obsidian CLI
 fish_add_path /Applications/Obsidian.app/Contents/MacOS
+
+# Ensure ~/bin wins over everything above
+if test -d "$HOME/bin/"
+    fish_add_path --move --prepend $HOME/bin
+end
 
 # Open vscode editor in a new window and wait for the file to be saved
 if test -e /usr/local/bin/code
