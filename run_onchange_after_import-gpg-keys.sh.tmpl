@@ -25,8 +25,10 @@ if gpg --list-keys "$KEY_ID" >/dev/null 2>&1 \
 fi
 
 # Key missing — fetch from 1Password at runtime (this is what triggers unlock).
-PRIVATE_KEY=$(op read "op://Private/GPG Key/private_key" 2>/dev/null || true)
-PUBLIC_KEY=$(op read "op://Private/GPG Key/public_key" 2>/dev/null || true)
+# Values are stored base64-encoded (single line) so 1Password can't mangle the
+# armor's newlines; decode back to ASCII-armored keys before import.
+PRIVATE_KEY=$(op read "op://Private/GPG Key/private_key" 2>/dev/null | base64 -d 2>/dev/null || true)
+PUBLIC_KEY=$(op read "op://Private/GPG Key/public_key" 2>/dev/null | base64 -d 2>/dev/null || true)
 
 # Strip whitespace to detect empty values from 1Password
 PUBLIC_KEY_TRIMMED=$(printf '%s' "$PUBLIC_KEY" | tr -d '[:space:]')
@@ -44,9 +46,14 @@ else
     echo "Private key not available in 1Password, skipping"
 fi
 
-# Mark key ultimately trusted (own key) if it's now in the keyring
+# Mark key ultimately trusted (own key) if it's now in the keyring.
+# import-ownertrust needs the full 40-char fingerprint, not the long keyid.
 if [ -n "$KEY_ID" ] && gpg --list-keys "$KEY_ID" >/dev/null 2>&1; then
-    echo "${KEY_ID}:6:" | gpg --import-ownertrust
+    FPR=$(gpg --with-colons --fingerprint "$KEY_ID" 2>/dev/null \
+        | awk -F: '/^fpr:/{print $10; exit}')
+    if [ -n "$FPR" ]; then
+        echo "${FPR}:6:" | gpg --import-ownertrust || echo "Ownertrust set failed, continuing"
+    fi
 fi
 {{- else }}
 echo "op CLI not installed, skipping GPG import"
