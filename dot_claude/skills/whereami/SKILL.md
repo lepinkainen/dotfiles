@@ -24,8 +24,10 @@ Items the agent must gather:
 - Uncommitted changes — `git status -s` plus short diffstat.
 - Recent history — `git log --oneline -5`.
 - Active direction inferred from recent commits.
+- Claude memory — derive the project dir by replacing every `/` in the cwd with `-` (e.g. `/Users/x/proj` → `-Users-x-proj`), then read `~/.claude/projects/<encoded-cwd>/memory/MEMORY.md` and any `memory/*.md` files if present. Summarize relevant project/feedback facts.
+- Recent chat log — list `~/.claude/projects/<encoded-cwd>/*.jsonl` (the session transcripts), pick the most recently modified one or two, and skim the tail for what was last being worked on. These are large; read only the final lines and extract the latest user intent and unfinished work.
 
-Instruct the agent to return a terse markdown report under 200 words with sections: **Project**, **State**, **Recent**, **Next**.
+Instruct the agent to return a terse markdown report under 250 words with sections: **Project**, **State**, **Recent**, **Memory**, **Next**. Omit **Memory** if no memory files or transcripts exist.
 
 ## Output
 
