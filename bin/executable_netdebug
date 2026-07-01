@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+#
+# netdebug — diagnose "can't connect" issues fast.
+# Walks DNS → reachability → TCP ports → proxy → TLS handshake for a host,
+# so a fast-fail curl (dead hotspot, stale DNS, blocked port, rogue proxy)
+# tells you *where* it broke instead of just "Couldn't connect".
+#
+# Usage:
+#   netdebug news.ycombinator.com
+#   netdebug https://example.com:8443/path   # scheme + port + path stripped
+#   netdebug example.com -p 22               # add extra port(s) to probe
+#
+set -uo pipefail
+
+# ---- deps ------------------------------------------------------------------
+if ! command -v gum >/dev/null 2>&1; then
+  echo "netdebug: needs 'gum' (brew install gum)" >&2
+  exit 127
+fi
+
+# ---- args ------------------------------------------------------------------
+# default target: if google is unreachable, the problem isn't google
+RAW="${1:-google.com}"
+if [[ "$RAW" == "-h" || "$RAW" == "--help" ]]; then
+  gum style --border rounded --padding "0 1" --border-foreground 212 \
+    "netdebug HOST [-p PORT]..." "" \
+    "  netdebug news.ycombinator.com" \
+    "  netdebug https://example.com:8443 -p 22"
+  exit 0
+fi
+shift || true
+
+# strip scheme, path, and any :port from the target
+HOST="$RAW"
+HOST="${HOST#*://}"       # drop scheme://
+HOST="${HOST%%/*}"        # drop /path
+URL_PORT=""
+if [[ "$HOST" == *:* ]]; then
+  URL_PORT="${HOST##*:}"
+  HOST="${HOST%%:*}"
+fi
+
+# default ports + any from URL or -p flags
+PORTS=(80 443)
+[[ -n "$URL_PORT" ]] && PORTS+=("$URL_PORT")
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -p) shift; [[ -n "${1:-}" ]] && PORTS+=("$1") ;;
+    *)  ;; # ignore unknown
+  esac
+  shift || true
+done
+# dedupe ports
+PORTS=($(printf '%s\n' "${PORTS[@]}" | awk '!seen[$0]++'))
+
+# ---- local network ---------------------------------------------------------
+wifi_iface() {
+  # first hardware port labelled Wi-Fi -> its Device (e.g. en0)
+  networksetup -listallhardwareports 2>/dev/null \
+    | awk '/Wi-Fi|AirPort/{getline; print $2; exit}'
+}
+
+# ---- style helpers ---------------------------------------------------------
+OK="$(gum style --foreground 42 '✓')"
+BAD="$(gum style --foreground 196 '✗')"
+WARN="$(gum style --foreground 214 '!')"
+hdr() { gum style --bold --foreground 212 "===> $1"; }
+line() { printf '  %s %s\n' "$1" "$2"; }
+
+FAIL=0
+
+WIFI_DEV="$(wifi_iface)"
+LOCAL_IP=""
+[[ -n "$WIFI_DEV" ]] && LOCAL_IP="$(ipconfig getifaddr "$WIFI_DEV" 2>/dev/null || true)"
+
+if [[ -n "$LOCAL_IP" ]]; then
+  gum style --border rounded --padding "0 1" --margin "1 0" \
+    --border-foreground 212 --bold "netdebug  ·  $HOST" "local IP: $LOCAL_IP"
+else
+  gum style --border rounded --padding "0 1" --margin "1 0" \
+    --border-foreground 212 --bold "netdebug  ·  $HOST"
+fi
+
+# ---- 1. DNS ----------------------------------------------------------------
+hdr "DNS"
+# one full query so we can report the resolver used and how slow it was
+DIG="$(dig "$HOST" A 2>/dev/null)"
+IPS="$(awk '$4=="A" && $5 ~ /^[0-9]/ {print $5}' <<< "$DIG")"
+DNS_SERVER="$(awk '/;; SERVER:/{print $3; exit}' <<< "$DIG")"
+DNS_TIME="$(awk '/;; Query time:/{print $4; exit}' <<< "$DIG")"  # msec
+
+if [[ -z "$IPS" ]]; then
+  line "$BAD" "no A record — DNS resolution failed (typo? DNS server down?)"
+  FAIL=1
+else
+  while read -r ip; do line "$OK" "$ip"; done <<< "$IPS"
+fi
+# which resolver answered, and how slow (stuck/slow DNS is a common culprit)
+if [[ -n "$DNS_SERVER" ]]; then
+  qt="via $DNS_SERVER"
+  [[ -n "$DNS_TIME" ]] && qt+="  (${DNS_TIME} ms)"
+  if [[ -n "$DNS_TIME" && "$DNS_TIME" -ge 500 ]]; then
+    line "$WARN" "$qt — slow resolver"
+  else
+    line "  " "$qt"
+  fi
+fi
+# /etc/hosts override is a classic gotcha
+HOSTS_HIT="$(grep -iE "[[:space:]]${HOST//./\\.}([[:space:]]|$)" /etc/hosts 2>/dev/null || true)"
+[[ -n "$HOSTS_HIT" ]] && line "$WARN" "/etc/hosts override: $HOSTS_HIT"
+
+FIRST_IP="$(head -n1 <<< "$IPS")"
+
+# ---- 2. reachability (ICMP) ------------------------------------------------
+hdr "Reachability (ping)"
+if [[ -n "$FIRST_IP" ]]; then
+  MS="$(ping -c 1 -t 3 "$FIRST_IP" 2>/dev/null | grep -oE 'time=[0-9.]+' | head -n1 | cut -d= -f2)"
+  if [[ -n "$MS" ]]; then
+    # green < 50ms, orange < 150ms, red otherwise
+    ms_int="${MS%.*}"
+    if [[ "$ms_int" -lt 50 ]]; then rtt_color=42
+    elif [[ "$ms_int" -lt 150 ]]; then rtt_color=214
+    else rtt_color=196
+    fi
+    line "$OK" "$FIRST_IP  $(gum style --foreground "$rtt_color" "${MS} ms")"
+  else
+    line "$WARN" "no ICMP reply (may be firewalled — not always fatal)"
+  fi
+else
+  line "$BAD" "skipped — no IP from DNS"
+fi
+
+# ---- 3. TCP ports ----------------------------------------------------------
+hdr "TCP ports"
+for p in "${PORTS[@]}"; do
+  if nc -z -G 3 "$HOST" "$p" >/dev/null 2>&1; then
+    line "$OK" "$p open"
+  else
+    line "$BAD" "$p closed/filtered"
+    FAIL=1
+  fi
+done
+
+# ---- 4. proxy env (rogue proxy = fast fail) --------------------------------
+hdr "Proxy env"
+PROXY_HIT=0
+for v in http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY; do
+  val="${!v:-}"
+  if [[ -n "$val" ]]; then line "$WARN" "$v=$val"; PROXY_HIT=1; fi
+done
+[[ "$PROXY_HIT" -eq 0 ]] && line "$OK" "none set"
+
+# ---- 5. TLS / HTTP handshake -----------------------------------------------
+if printf '%s\n' "${PORTS[@]}" | grep -qx 443; then
+  hdr "HTTPS handshake"
+  CODE="$(curl -sS -o /dev/null -w '%{http_code} %{time_total}s (via %{remote_ip})' \
+          --max-time 10 "https://$HOST" 2>/tmp/netdebug.err)"
+  if [[ $? -eq 0 && -n "$CODE" ]]; then
+    line "$OK" "HTTP $CODE"
+  else
+    line "$BAD" "$(tr -d '\n' < /tmp/netdebug.err)"
+    FAIL=1
+  fi
+  rm -f /tmp/netdebug.err
+fi
+
+# ---- verdict ---------------------------------------------------------------
+echo
+if [[ "$FAIL" -eq 0 ]]; then
+  gum style --border rounded --padding "0 1" --border-foreground 42 \
+    "$(gum style --foreground 42 --bold '✓ all checks passed') — host reachable"
+else
+  gum style --border rounded --padding "0 1" --border-foreground 196 \
+    "$(gum style --foreground 196 --bold '✗ problems above') — see first ✗ for where it broke"
+fi
+exit "$FAIL"
