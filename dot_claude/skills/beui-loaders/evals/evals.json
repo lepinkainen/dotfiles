@@ -1,0 +1,52 @@
+{
+  "skill_name": "beui-loaders",
+  "evals": [
+    {
+      "id": 0,
+      "name": "braille-fetch-indicator",
+      "prompt": "I have a plain static HTML page at index.html in this directory. When the Search button is clicked it fetches results from the npm registry — please add a loading indicator that shows while the fetch is in flight and disappears when results arrive. I'd like one of those terminal-style braille spinners like CLI tools show. No frameworks, no build step, just edit the file.",
+      "expected_output": "index.html modified with a braille-frame spinner (⣾⣽⣻⢿⡿⣟⣯⣷ or similar) driven by setInterval, shown during fetch, hidden after, with role=status and reduced-motion handling",
+      "files": ["fixtures/index.html"],
+      "assertions": [
+        "Braille spinner frames (⣾⣽⣻-style or ⠋⠙⠹-style glyphs) are cycled via JS interval",
+        "Indicator is shown when the fetch starts and hidden when results arrive (including on error path or via finally)",
+        "The spinner interval is cleared when loading finishes — no leaked timer",
+        "Indicator has accessible status markup (role=status or aria-live/aria-label)",
+        "Original search behavior intact: form submit still fetches npm registry and renders results list",
+        "Monospace font used for the glyph so frames don't jitter horizontally"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "jinja-dots-form",
+      "prompt": "upload.html in this directory is a Jinja2 template from my Flask app. The form POST can take ~10 seconds for big CSV files — show an animated bouncing-dots loader next to the Upload button while the request is pending, and disable the button so people don't double-submit. Plain CSS/JS only, no build step, no libraries.",
+      "expected_output": "upload.html modified with a three-dot bouncing loader (staggered CSS keyframes), revealed on form submit, button disabled, valid Jinja preserved",
+      "files": ["fixtures/upload.html"],
+      "assertions": [
+        "Loader is three (or more) dots animated with staggered CSS keyframes (per-dot animation-delay)",
+        "Loader hidden initially and revealed on form submit",
+        "Submit button gets disabled on submit to prevent double-submission",
+        "Jinja structure preserved: extends, block content, url_for, and error conditional all intact",
+        "Form submission is not prevented — the POST still goes through natively (no preventDefault without a manual submit)",
+        "Loader has accessible status markup (role=status or aria attributes)",
+        "prefers-reduced-motion is respected (animation replaced or calmed under the media query)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "morph-standalone",
+      "prompt": "Give me a standalone HTML snippet of a loading animation where a filled shape morphs between circle, square, triangle and so on — around 48px, in my brand color #6d28d9. It has to be fully self-contained (markup + styles in one block) so I can paste it into my static site. Save it as morph-loader.html.",
+      "expected_output": "morph-loader.html: self-contained snippet, shape genuinely morphs (SMIL or CSS d/path animation), 48px sizing, #6d28d9 color, accessible root",
+      "files": [],
+      "assertions": [
+        "The shape genuinely morphs between geometries (SMIL animate on path d, or CSS d:path()/clip-path interpolation) — not a crossfade, spin, or border-radius-only trick",
+        "At least circle, square, and triangle shapes appear in the sequence",
+        "Rendered size is approximately 48px",
+        "Brand color #6d28d9 is used for the shape",
+        "Fully self-contained: no external stylesheets, scripts, CDNs, or framework dependencies",
+        "Root element has accessible status markup (role=status + aria-label)",
+        "Each shape holds briefly before morphing to the next (not a continuous blur of motion)"
+      ]
+    }
+  ]
+}

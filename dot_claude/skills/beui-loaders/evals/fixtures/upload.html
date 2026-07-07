@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Upload dataset</h2>
+<p>CSV files up to 200 MB. Processing starts immediately after upload.</p>
+<form method="post" enctype="multipart/form-data" action="{{ url_for('upload_dataset') }}" id="upload-form">
+  <input type="file" name="dataset" accept=".csv" required>
+  <label>
+    Delimiter
+    <select name="delimiter">
+      <option value=",">comma</option>
+      <option value=";">semicolon</option>
+      <option value="\t">tab</option>
+    </select>
+  </label>
+  <button type="submit" id="upload-btn">Upload</button>
+</form>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% endblock %}
