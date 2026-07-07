@@ -1,0 +1,403 @@
+#!/usr/bin/env bash
+#
+# unpack — extract (almost) any archive into the current directory.
+#
+#   * Format is detected by extension first, then by `file` magic bytes,
+#     so misnamed/extensionless archives still work.
+#   * If an archive would scatter multiple loose entries into $PWD, unpack
+#     automatically creates a subdirectory named after the archive and
+#     extracts there. A single top-level file/dir is left in place.
+#   * Single-stream compressors (.gz/.bz2/.xz/.zst/...) decompress to one
+#     file (the extension is stripped) and the original is kept.
+#
+# Usage:
+#   unpack [options] <archive> [archive...] [-- passthru-args]
+#
+# Options:
+#   -C, --directory DIR   extract into DIR (created if needed)
+#   -i, --in-place        never auto-create a subdir; extract into $PWD
+#   -l, --list            list contents instead of extracting
+#   -f, --force           overwrite existing destination files/dirs
+#   -v, --verbose         verbose output from the underlying tool
+#   -q, --quiet           suppress the "extracted -> ..." summary line
+#   -h, --help            show this help
+#
+# Supported: tar tar.gz/tgz tar.bz2/tbz tar.xz/txz tar.zst/tzst tar.lz
+# tar.lzma tar.Z, zip jar war ear apk epub xpi crx whl egg ipa kmz, 7z,
+# rar, cpio, iso, xar/pkg/xip, ar/deb, gz bz2 xz zst lz4 lzip lzma Z.
+#
+# Engine preference: bsdtar > format-specific tool (tar/unzip/7zz/unrar/...).
+# RAR is proprietary: install `unar` (brew install unar) for complete support.
+# The `rar` cask is Gatekeeper-blocked on macOS; `unar` (a formula) is not.
+#
+set -euo pipefail
+
+PROG="${0##*/}"
+
+die()  { printf '%s: %s\n' "$PROG" "$*" >&2; exit 1; }
+have() { command -v "$1" >/dev/null 2>&1; }
+need() { have "$1" || die "required tool not found: $1 (install it and retry)"; }
+lc()   { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+
+# Resolve the 7-Zip binary (Homebrew's 7zip formula installs it as '7zz').
+SEVENZ=""
+for _c in 7zz 7z 7za 7zr; do
+  have "$_c" && { SEVENZ="$_c"; break; }
+done
+need7z() { [[ -n "$SEVENZ" ]] || die "7-Zip not found (brew install 7zip)"; }
+
+# Staging directory for the current extraction; cleaned on any exit.
+STAGE=""
+trap '[[ -n "${STAGE:-}" && -d "${STAGE:-}" ]] && rm -rf "$STAGE"' EXIT
+
+# ---- option parsing ---------------------------------------------------------
+DIR=""
+INPLACE=0
+LIST=0
+FORCE=0
+VERBOSE=0
+QUIET=0
+PASSTHRU=()
+ARCHIVES=()
+parsing=1
+while (($#)); do
+  if [[ "${1:-}" == "--" ]]; then parsing=0; shift; continue; fi
+  if ((parsing)); then
+    case "$1" in
+      -h|--help)
+        sed -n '3,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+      -l|--list)    LIST=1; shift ;;
+      -i|--in-place) INPLACE=1; shift ;;
+      -f|--force)   FORCE=1; shift ;;
+      -v|--verbose) VERBOSE=1; shift ;;
+      -q|--quiet)   QUIET=1; shift ;;
+      -C|--directory)
+        (($#>=2)) || die "-C requires a directory argument"; DIR="$2"; shift 2 ;;
+      --directory=*) DIR="${1#*=}"; shift ;;
+      -C*) DIR="${1#-C}"; shift ;;
+      --) parsing=0; shift ;;
+      -*) die "unknown option: $1 (use -- to pass flags to the tool)" ;;
+      *) ARCHIVES+=("$1"); shift ;;
+    esac
+  else
+    PASSTHRU+=("$1"); shift
+  fi
+done
+(( ${#ARCHIVES[@]} )) || { sed -n '3,/^$/p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 1; }
+
+# bsdtar is the workhorse for listing/extracting most container formats.
+have bsdtar || have tar || die "no 'tar' or 'bsdtar' found"
+
+# ---- format detection -------------------------------------------------------
+# Echoes a KIND keyword for the given file. Extension first, magic fallback.
+detect_kind() {
+  local f="$1" n ln
+  n="$(basename "$f")"; ln="$(lc "$n")"
+  case "$ln" in
+    *.tar.gz|*.tgz)              echo tar; return ;;
+    *.tar.bz2|*.tbz|*.tbz2)      echo tar; return ;;
+    *.tar.xz|*.txz)              echo tar; return ;;
+    *.tar.zst|*.tzst)            echo tar; return ;;
+    *.tar.lz|*.tar.lzma)         echo tar; return ;;
+    *.tar.lzo)                   echo tar; return ;;
+    *.tar.z|*.taz)               echo tar; return ;;
+    *.tar)                       echo tar; return ;;
+    *.zip|*.jar|*.war|*.ear|*.apk|*.epub|*.xpi|*.crx|*.whl|*.egg|*.ipa|*.kmz|*.docx|*.docm|*.xlsx|*.xlsm|*.pptx|*.pptm|*.odt|*.ods|*.odp)
+                                 echo zip; return ;;
+    *.7z|*.7zip)                 echo 7z; return ;;
+    *.rar|*.r00|*.cbr)           echo rar; return ;;
+    *.cpio)                      echo cpio; return ;;
+    *.iso)                       echo iso; return ;;
+    *.xar|*.pkg|*.xip)           echo xar; return ;;
+    *.ar|*.deb)                  echo ar; return ;;
+    *.gz)                        if tar_inside "$f"; then echo tar; else echo gz; fi; return ;;
+    *.bz2)                       if tar_inside "$f"; then echo tar; else echo bz2; fi; return ;;
+    *.xz)                        if tar_inside "$f"; then echo tar; else echo xz; fi; return ;;
+    *.zst|*.zstd)                if tar_inside "$f"; then echo tar; else echo zst; fi; return ;;
+    *.lz4)                       echo lz4; return ;;
+    *.lz)                        echo lzip; return ;;
+    *.lzma)                      if tar_inside "$f"; then echo tar; else echo lzma; fi; return ;;
+    *.z|*.zz)                    echo compress; return ;;
+  esac
+  # fall back to magic bytes
+  detect_by_magic "$f"
+}
+
+# Is the (compressed) file actually a tar inside? Non-destructive probe.
+tar_inside() {
+  local t
+  if have bsdtar; then t=bsdtar; elif have tar; then t=tar; else return 1; fi
+  "$t" tf "$1" >/dev/null 2>&1
+}
+
+detect_by_magic() {
+  local mt
+  mt="$(file -b --mime-type "$1" 2>/dev/null || true)"
+  case "$mt" in
+    application/x-tar)                       echo tar ;;
+    application/gzip|application/x-gzip*)    if tar_inside "$1"; then echo tar; else echo gz; fi ;;
+    application/x-bzip2)                     if tar_inside "$1"; then echo tar; else echo bz2; fi ;;
+    application/x-xz)                        if tar_inside "$1"; then echo tar; else echo xz; fi ;;
+    application/zstd|application/x-zstd*)    if tar_inside "$1"; then echo tar; else echo zst; fi ;;
+    application/x-7z-compressed)             echo 7z ;;
+    application/vnd.rar|application/x-rar*)  echo rar ;;
+    application/zip|application/x-zip-compressed) echo zip ;;
+    application/x-cpio)                      echo cpio ;;
+    application/x-iso9660-image)             echo iso ;;
+    application/x-xar)                       echo xar ;;
+    application/x-lzip)                      echo lzip ;;
+    application/x-lzma)                      echo lzma ;;
+    application/x-lz4)                       echo lz4 ;;
+    application/x-compress)                  echo compress ;;
+    *)                                       return 1 ;;
+  esac
+}
+
+# Strip a known archive extension from a filename.
+strip_ext() {
+  local n="$1" ln
+  ln="$(lc "$n")"
+  for suf in .tar.gz .tar.bz2 .tar.xz .tar.zst .tar.lzma .tar.lz .tar.lzo .tar.z .tgz .tbz2 .tbz .txz .tzst .taz \
+             .tar .zip .jar .war .ear .apk .epub .xpi .crx .whl .egg .ipa .kmz .docx .docm .xlsx .xlsm .pptx .pptm .odt .ods .odp \
+             .7z .7zip .rar .cpio .iso .xar .pkg .xip \
+             .gz .bz2 .xz .zst .zstd .lz4 .lzip .lzma .z .zz; do
+    [[ "$ln" == *"$suf" ]] && { printf '%s' "${n%"$suf"}"; return; }
+  done
+  printf '%s' "${n%.*}"
+}
+
+# ---- listing ----------------------------------------------------------------
+list_contents() {
+  local f="$1" kind="$2"
+  case "$kind" in
+    tar|cpio|iso|xar|7z|rar)
+      if have bsdtar && bsdtar tf "$f" 2>/dev/null; then return; fi ;;
+  esac
+  case "$kind" in
+    tar)    need tar;    tar tf "$f" ;;
+    zip)    need unzip;  unzip -Z1 "$f" ;;
+    7z)     need7z;      "$SEVENZ" l "$f" ;;
+    rar)
+      if have unrar; then unrar l "$f"
+      else need7z;     "$SEVENZ" l "$f"; fi ;;
+    cpio)
+      if have bsdtar; then bsdtar tf "$f"
+      else die "need bsdtar or libarchive for cpio"; fi ;;
+    iso)
+      if have bsdtar; then bsdtar tf "$f"
+      else need7z;     "$SEVENZ" l "$f"; fi ;;
+    xar)
+      if have xar; then xar -tf "$f"
+      else need bsdtar;  bsdtar tf "$f"; fi ;;
+    ar)     need ar;     ar t "$f" ;;
+    *)      die "cannot list single-file stream ($kind); just decompress it" ;;
+  esac
+}
+
+# Number of regular-file entries in a RAR archive, from 7zz's authoritative
+# listing summary ("N files, M folders"). Used to detect a silent partial
+# extraction by bsdtar/7zz. Returns 0 if it can't be determined (skip check).
+rar_expected_count() {  # rar_expected_count <file>
+  local f="$1"
+  [[ -n "$SEVENZ" ]] || { echo 0; return; }
+  "$SEVENZ" l "$f" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i ~ /files,/){print $(i-1); exit}}'
+}
+
+# Unique top-level entry names for the archive (for the subdir-safety check).
+toplevels() {
+  local f="$1" kind="$2" raw=""
+  case "$kind" in
+    tar|zip|cpio|iso|xar|7z|rar)
+      have bsdtar && raw="$(bsdtar tf "$f" 2>/dev/null || true)"
+      [[ -z "$raw" ]] && case "$kind" in
+        zip) raw="$(unzip -Z1 "$f" 2>/dev/null || true)" ;;
+        7z)  [[ -n "$SEVENZ" ]] && raw="$("$SEVENZ" l -slt "$f" 2>/dev/null | awk -F'= ' '/^Path =/{print $2}' || true)" ;;
+        rar) have unrar && raw="$(unrar lb "$f" 2>/dev/null || true)" ;;
+      esac ;;
+    *) raw="" ;;
+  esac
+  printf '%s\n' "$raw" | sed 's:\\:/:g; s:^\./::' | awk -F/ 'NF{print $1}' | sort -u
+}
+
+# ---- extraction -------------------------------------------------------------
+# Extract one archive into <stagedir>. Returns 0 on success, non-zero on
+# failure. Every tool invocation is guarded so a mid-extraction failure can
+# never abort the script (we must return, not die, so the caller can clean up).
+extract_attempt() {  # extract_attempt <file> <kind> <stagedir>
+  local f="$1" kind="$2" dest="$3" v=""
+  ((VERBOSE)) && v="-v"
+  case "$kind" in
+    tar)
+      need tar
+      if ((${#PASSTHRU[@]})); then tar $v xf "$f" -C "$dest" "${PASSTHRU[@]}" || return 1
+      else                          tar $v xf "$f" -C "$dest" || return 1; fi
+      return 0 ;;
+    zip)
+      if have unzip; then
+        local q="-q"; ((VERBOSE)) && q=""
+        if ((${#PASSTHRU[@]})); then unzip -o $q "$f" -d "$dest" "${PASSTHRU[@]}" || return 1
+        else                          unzip -o $q "$f" -d "$dest" || return 1; fi
+        return 0
+      fi
+      need bsdtar; bsdtar $v xf "$f" -C "$dest" || return 1; return 0 ;;
+    7z)
+      if [[ -n "$SEVENZ" ]]; then "$SEVENZ" x -y -o"$dest" "$f" || return 1; return 0; fi
+      need bsdtar; bsdtar $v xf "$f" -C "$dest" || return 1; return 0 ;;
+    rar)
+      # RAR is proprietary/closed. Two tools implement it fully and safely:
+      #   - unrar  (RARLAB; Homebrew's 'rar' cask is Gatekeeper-blocked, so
+      #             it is often missing on macOS)
+      #   - unar   (The Unarchiver CLI; Homebrew *formula* 'unar', clean)
+      # Both are tried before the incomplete third-party decoders. bsdtar and
+      # 7zz can silently or loudly fail on RAR (7zz even emits 0-byte files),
+      # so bsdtar gets a completeness check and 7zz is a last resort.
+      if have unrar; then
+        unrar x -y "$f" "$dest/" || return 1
+        return 0
+      fi
+      if have unar; then
+        # -D = never wrap output in an extra dir, -f = overwrite, -o = out dir.
+        unar -D -f -o "$dest" "$f" >/dev/null 2>&1 && return 0
+        rm -rf "$dest"; mkdir -p "$dest"
+      fi
+      if have bsdtar; then
+        if bsdtar $v xf "$f" -C "$dest"; then
+          local exp act
+          exp=$(rar_expected_count "$f")
+          act=$(find "$dest" -type f 2>/dev/null | wc -l | tr -d ' ')
+          if [[ "$exp" -gt 0 && "$act" -lt "$exp" ]]; then
+            printf '%s: RAR incomplete (%s of %s files) for %s\n' \
+              "$PROG" "$act" "$exp" "$(basename "$f")" >&2
+            return 1
+          fi
+          return 0
+        fi
+        rm -rf "$dest"; mkdir -p "$dest"
+      fi
+      if [[ -n "$SEVENZ" ]]; then "$SEVENZ" x -y -o"$dest" "$f" && return 0; fi
+      return 1 ;;
+    cpio)
+      if have bsdtar; then bsdtar $v xf "$f" -C "$dest" || return 1; return 0; fi
+      need cpio; (cd "$dest" && cpio -idmu $v <"$f") || return 1; return 0 ;;
+    iso)
+      if [[ -n "$SEVENZ" ]]; then "$SEVENZ" x -y -o"$dest" "$f" || return 1; return 0; fi
+      need bsdtar; bsdtar $v xf "$f" -C "$dest" || return 1; return 0 ;;
+    xar)
+      if have xar; then xar -xf "$f" -C "$dest" || return 1; return 0; fi
+      need bsdtar; bsdtar $v xf "$f" -C "$dest" || return 1; return 0 ;;
+    ar)
+      need ar; (cd "$dest" && ar x${v:+v} "$f") || return 1; return 0 ;;
+    *)
+      die "internal: unknown container kind '$kind'" ;;
+  esac
+}
+
+# Move the contents of <srcdir> into <destdir> (which may already exist),
+# including dotfiles. Used when the final destination is shared (cwd or -C dir).
+move_into() {  # move_into <srcdir> <destdir>
+  local src="$1" dest="$2"
+  mkdir -p -- "$dest"
+  ( shopt -s dotglob nullglob
+    local files=("$src"/*)
+    if (( ${#files[@]} )); then cd -- "$src" && mv -- * "$dest"/; fi
+  )
+}
+
+# Decompress a single stream to <dest>/<name-without-ext>, keeping the original.
+decompress_stream() {  # decompress_stream <file> <kind> <destdir>
+  local f="$1" kind="$2" dest="$3" out
+  out="$dest/$(strip_ext "$(basename "$f")")"
+  [[ -e "$out" ]] && { ((FORCE)) || die "refusing to overwrite existing '$out' (use -f)"; }
+  case "$kind" in
+    gz)       need gunzip;  gunzip -kc "$f" >"$out" ;;
+    bz2)      need bunzip2; bunzip2 -kc "$f" >"$out" ;;
+    xz)       if have xz; then xz -dc "$f" >"$out"; else need unxz; unxz -c "$f" >"$out"; fi ;;
+    zst)      if have zstd; then zstd -dc "$f" >"$out"; else need unzstd; unzstd -c "$f" >"$out"; fi ;;
+    lz4)      need lz4;     lz4 -dc "$f" >"$out" ;;
+    lzip)     have lzip || die "need 'lzip' for .lz (brew install lzip)"; lzip -dc "$f" >"$out" ;;
+    lzma)     if have unlzma; then unlzma -c "$f" >"$out"; else need xz; xz -dc "$f" >"$out"; fi ;;
+    compress) need gzip;    gzip -dc "$f" >"$out" ;;
+    *)        die "internal: unknown stream kind '$kind'" ;;
+  esac
+  ((QUIET)) || printf '%s: %s -> %s\n' "$PROG" "$(basename "$f")" "$out"
+}
+
+# ---- main loop --------------------------------------------------------------
+IS_STREAM_RE='^(gz|bz2|xz|zst|lz4|lzip|lzma|compress)$'
+
+for arc in "${ARCHIVES[@]}"; do
+  [[ -e "$arc" ]] || die "no such file: $arc"
+  [[ -f "$arc" ]] || die "not a regular file: $arc"
+  kind="$(detect_kind "$arc")" || kind=""
+  [[ -n "$kind" ]] || die "could not detect archive type: $arc"
+
+  if ((LIST)); then list_contents "$arc" "$kind"; continue; fi
+
+  # Single-stream compressors are handled separately.
+  if [[ $kind =~ $IS_STREAM_RE ]]; then
+    if [[ -n "$DIR" ]]; then
+      mkdir -p "$DIR"; decompress_stream "$arc" "$kind" "$DIR"
+    else
+      decompress_stream "$arc" "$kind" "."
+    fi
+    continue
+  fi
+
+  # Container archive: decide the destination directory.
+  local_dest=""
+  own_dest=0   # 1 when we create the dest dir ourselves (can rename staging into it)
+  if [[ -n "$DIR" ]]; then
+    local_dest="$DIR"; mkdir -p "$local_dest"
+  elif ((INPLACE)); then
+    local_dest="."
+  else
+    # Auto-subdir if the archive would scatter multiple top-level entries.
+    tl_count="$(toplevels "$arc" "$kind" | grep -c . || true)"
+    if [[ "$tl_count" -gt 1 ]]; then
+      base="$(strip_ext "$(basename "$arc")")"
+      [[ -n "$base" ]] || base="unpacked"
+      local_dest="$base"
+      if [[ -e "$local_dest" ]]; then
+        ((FORCE)) || die "destination '$local_dest' exists (use -f to overwrite, or -C/-i)"
+        rm -rf "$local_dest"
+      fi
+      own_dest=1
+    else
+      local_dest="."
+    fi
+  fi
+
+  # Absolute path of the destination (for safe moves from inside the staging dir).
+  case "$local_dest" in
+    /*) final_dest="$local_dest" ;;
+    *)  final_dest="$PWD/$local_dest" ;;
+  esac
+
+  # Stage extraction in a temp dir on the SAME filesystem as the destination
+  # (so the final move is a cheap rename), then commit only on success. This
+  # guarantees a failing/partial tool never leaves half-extracted files behind.
+  if [[ "$local_dest" == "." ]]; then
+    stage_parent="."
+  else
+    stage_parent="$(dirname -- "$local_dest")"
+    [[ -d "$stage_parent" ]] || mkdir -p "$stage_parent"
+  fi
+  STAGE="$(mktemp -d "$stage_parent/.unpack.XXXXXX")" || die "could not create staging dir"
+
+  if extract_attempt "$arc" "$kind" "$STAGE"; then
+    if ((own_dest)); then
+      rm -rf "$local_dest"
+      mv -- "$STAGE" "$final_dest" || die "could not move staged files into '$local_dest'"
+    else
+      move_into "$STAGE" "$final_dest" || die "could not move staged files into '$local_dest'"
+    fi
+    rm -rf "$STAGE"; STAGE=""
+    ((QUIET)) || printf '%s: %s -> %s\n' "$PROG" "$(basename "$arc")" "$local_dest"
+  else
+    rm -rf "$STAGE"; STAGE=""
+    case "$kind" in
+      rar) die "failed to extract RAR '$arc': no complete RAR tool succeeded; install unar (brew install unar) or unrar" ;;
+      *)   die "failed to extract '$arc' ($kind)" ;;
+    esac
+  fi
+done
