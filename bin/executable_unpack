@@ -303,11 +303,27 @@ def extract_attempt(f, kind, dest, verbose, passthru, quiet):
         need("bsdtar")
         return sh(["bsdtar", *v, "xf", f, "-C", dest])
     if kind == "rar":
-        # RAR is proprietary. Prefer the complete decoders (unrar, then unar);
-        # bsdtar/7zz can silently produce a partial extraction, so bsdtar gets a
-        # completeness check and 7zz is the last resort.
+        # RAR is proprietary. Prefer complete decoders (unrar, then unar);
+        # bsdtar and 7zz may produce partial extractions from damaged archives.
+        # Strategy: if a tool produced ≥1 file (even on error), keep it and warn.
+        # Only wipe and try the next tool if a tool produced zero files.
+        def _rar_count():
+            return sum(1 for p in Path(dest).rglob("*") if p.is_file())
+
+        def _rar_warn(tool, n):
+            print(f"{PROG}: WARNING partial extraction of {Path(f).name} "
+                  f"({tool} reported errors; kept {n} files)", file=sys.stderr)
+
         if have("unrar"):
-            return sh(["unrar", "x", "-y", f, dest + "/"])
+            ok = sh(["unrar", "x", "-y", f, dest + "/"])
+            if ok:
+                return True
+            n = _rar_count()
+            if n > 0:
+                _rar_warn("unrar", n)
+                return True
+            shutil.rmtree(dest, ignore_errors=True)
+            os.makedirs(dest, exist_ok=True)
         if have("unar"):
             # -D never wraps in an extra dir, -f overwrite, -o out dir.
             cmd = ["unar", "-D", "-f", "-o", dest, f]
@@ -315,21 +331,35 @@ def extract_attempt(f, kind, dest, verbose, passthru, quiet):
                 else subprocess.run(cmd)
             if r.returncode == 0:
                 return True
-            shutil.rmtree(dest, ignore_errors=True)
-            os.makedirs(dest, exist_ok=True)
-        if have("bsdtar"):
-            if sh(["bsdtar", *v, "xf", f, "-C", dest]):
-                exp = rar_expected_count(f)
-                act = sum(1 for p in Path(dest).rglob("*") if p.is_file())
-                if exp > 0 and act < exp:
-                    print(f"{PROG}: RAR incomplete ({act} of {exp} files) for "
-                          f"{Path(f).name}", file=sys.stderr)
-                    return False
+            n = _rar_count()
+            if n > 0:
+                _rar_warn("unar", n)
                 return True
             shutil.rmtree(dest, ignore_errors=True)
             os.makedirs(dest, exist_ok=True)
-        if SEVENZ and sh([SEVENZ, "x", "-y", f"-o{dest}", f]):
-            return True
+        if have("bsdtar"):
+            ok = sh(["bsdtar", *v, "xf", f, "-C", dest])
+            n = _rar_count()
+            if ok:
+                exp = rar_expected_count(f)
+                if exp > 0 and n < exp:
+                    print(f"{PROG}: WARNING partial extraction of {Path(f).name} "
+                          f"(bsdtar reported success but only {n} of {exp} files "
+                          f"extracted)", file=sys.stderr)
+                return True
+            if n > 0:
+                _rar_warn("bsdtar", n)
+                return True
+            shutil.rmtree(dest, ignore_errors=True)
+            os.makedirs(dest, exist_ok=True)
+        if SEVENZ:
+            ok = sh([SEVENZ, "x", "-y", f"-o{dest}", f])
+            if ok:
+                return True
+            n = _rar_count()
+            if n > 0:
+                _rar_warn("7zz", n)
+                return True
         return False
     if kind == "cpio":
         if have("bsdtar"):
