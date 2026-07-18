@@ -64,6 +64,14 @@ ollama_image_prompt() {
     return 1
   fi
 
+  # Normalize OLLAMA_THINK to boolean: default is "false"
+  local think think_val="${OLLAMA_THINK:-false}"
+  case "$think_val" in
+    true | 1) think=true ;;
+    false | 0) think=false ;;
+    *) think=false ;;
+  esac
+
   local tmp_b64
   tmp_b64=$(mktemp) || {
     echo "Failed to allocate temp file" >&2
@@ -82,16 +90,78 @@ ollama_image_prompt() {
     return 1
   }
 
-  local response
-  if ! response=$(
+  # Attempt request with think parameter first
+  local response http_code payload
+  payload=$(
     jq -n \
       --arg model "$model" \
       --arg prompt "$prompt" \
       --rawfile image "$tmp_b64" \
-      '{model: $model, prompt: $prompt, stream: false, images: [$image]}' |
-      curl -sS -f -X POST "$api_url" -H "Content-Type: application/json" --data-binary @-
-  ); then
-    echo "Request to Ollama API failed. Ensure the server is reachable at $api_url." >&2
+      --argjson think "$think" \
+      '{model: $model, prompt: $prompt, stream: false, think: $think, images: [$image]}'
+  ) || {
+    echo "Failed to build JSON payload" >&2
+    rm -f "$tmp_b64"
+    return 1
+  }
+
+  local retry_without_think=false
+
+  response=$(
+    printf '%s' "$payload" |
+      curl -sS -X POST "$api_url" -H "Content-Type: application/json" --data-binary @- -w '\n%{http_code}'
+  ) || {
+    echo "Could not reach Ollama API at $api_url." >&2
+    rm -f "$tmp_b64"
+    return 1
+  }
+
+  http_code="${response##*$'\n'}"
+  response="${response%$'\n'*}"
+
+  # Check if this is a 400 error with "think" in the error message
+  if [[ "$http_code" == "400" ]]; then
+    local error_msg
+    error_msg=$(printf '%s' "$response" | jq -r '.error // empty' 2>/dev/null)
+    if [[ "$error_msg" =~ [Tt][Hh][Ii][Nn][Kk] ]]; then
+      retry_without_think=true
+    fi
+  fi
+
+  # Retry without think parameter if needed
+  if [[ "$retry_without_think" == "true" ]]; then
+    payload=$(
+      jq -n \
+        --arg model "$model" \
+        --arg prompt "$prompt" \
+        --rawfile image "$tmp_b64" \
+        '{model: $model, prompt: $prompt, stream: false, images: [$image]}'
+    ) || {
+      echo "Failed to build JSON payload (retry)" >&2
+      rm -f "$tmp_b64"
+      return 1
+    }
+
+    response=$(
+      printf '%s' "$payload" |
+        curl -sS -X POST "$api_url" -H "Content-Type: application/json" --data-binary @- -w '\n%{http_code}'
+    ) || {
+      echo "Could not reach Ollama API at $api_url." >&2
+      rm -f "$tmp_b64"
+      return 1
+    }
+
+    http_code="${response##*$'\n'}"
+    response="${response%$'\n'*}"
+  fi
+
+  if [[ "$http_code" != 2* ]]; then
+    local error_msg
+    error_msg=$(printf '%s' "$response" | jq -r '.error // empty' 2>/dev/null)
+    if [[ -z "$error_msg" ]]; then
+      error_msg="$response"
+    fi
+    echo "Ollama API error (HTTP $http_code): $error_msg" >&2
     rm -f "$tmp_b64"
     return 1
   fi

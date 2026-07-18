@@ -20,7 +20,7 @@ Options:
   -p extra_prompt   Additional instructions appended to the base prompt
 
 Environment overrides:
-  OLLAMA_MODEL, SENTENCE_COUNT, EXTRA_PROMPT, OLLAMA_HOST, OLLAMA_API_URL
+  OLLAMA_MODEL, SENTENCE_COUNT, EXTRA_PROMPT, OLLAMA_HOST, OLLAMA_API_URL, OLLAMA_THINK
 EOF
 }
 
