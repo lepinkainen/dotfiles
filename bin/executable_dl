@@ -197,11 +197,20 @@ def main():
     yt_dlp_opts = load_yt_dlp_opts()
 
     failures = 0
-    for url in urls:
+    for index, url in enumerate(urls):
         if len(urls) > 1:
             err_console.print(f"[cyan]==>[/cyan] {url}")
-        if not download_one(url, err_console, yt_dlp_opts):
-            failures += 1
+        try:
+            if not download_one(url, err_console, yt_dlp_opts):
+                failures += 1
+        except KeyboardInterrupt:
+            current = url
+            remaining = len(urls) - index - 1
+            msg = f"\n[yellow]Aborted[/yellow] [dim]({current})[/dim]"
+            if remaining:
+                msg += f"\n[yellow]Skipped[/yellow] {remaining} pending URL{'s' if remaining > 1 else ''}."
+            err_console.print(msg)
+            sys.exit(130)
 
     sys.exit(1 if failures else 0)
 
