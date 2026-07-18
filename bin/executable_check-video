@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -eq 0 ]]; then
+  echo "Usage: check-video <file> [<file> ...]" >&2
+  exit 1
+fi
+
+for file in "$@"; do
+  if [[ ! -f "$file" ]]; then
+    echo "$file MISSING"
+    continue
+  fi
+
+  error_output=$(ffmpeg -v error -i "$file" -map 0 -f null - 2>&1) || true
+  error_count=$(printf '%s' "$error_output" | grep -c . || true)
+
+  if [[ $error_count -eq 0 ]]; then
+    echo "$file OK"
+  else
+    echo "$file BROKEN ($error_count decode errors)"
+  fi
+done
