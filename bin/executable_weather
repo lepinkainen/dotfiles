@@ -14,6 +14,7 @@ and met.no for weather data.
 
 Usage:
     weather
+    weather --json
     weather --location LAT,LON
     WEATHER_LOCATION=LAT,LON weather
 """
@@ -240,7 +241,7 @@ def get_location() -> Location:
         lat, lon = _get_location_corelocation()
         name = _resolve_name(lat, lon)
         return Location(lat, lon, name)
-    except (RuntimeError, TimeoutError):
+    except (RuntimeError, TimeoutError, subprocess.TimeoutExpired, OSError, json.JSONDecodeError):
         _err_console.print(
             "[dim]CoreLocation unavailable — enable Location Services for "
             "your terminal in System Settings > Privacy & Security.[/dim]"
@@ -499,6 +500,33 @@ def render(weather: WeatherData, location: Location, console: Console) -> None:
 
 
 # ---------------------------------------------------------------------------
+# JSON output
+# ---------------------------------------------------------------------------
+
+
+def _hour_to_dict(h: HourForecast) -> dict:
+    return {
+        "time": h.time.isoformat(),
+        "temperature": h.temperature,
+        "wind_speed": h.wind_speed,
+        "precipitation_1h": h.precipitation_1h,
+        "uv_index": h.uv_index,
+        "symbol_code": h.symbol_code,
+        "emoji": symbol_to_emoji(h.symbol_code),
+        "condition": symbol_to_name(h.symbol_code),
+    }
+
+
+def render_json(weather: WeatherData, location: Location) -> None:
+    payload = {
+        "location": {"name": location.name, "lat": location.lat, "lon": location.lon},
+        "current": _hour_to_dict(weather.current),
+        "forecast": [_hour_to_dict(h) for h in weather.forecast],
+    }
+    print(json.dumps(payload, ensure_ascii=False))
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -510,6 +538,7 @@ def main() -> None:
         console.print("[bold]weather[/] — current conditions and 8-hour forecast\n")
         console.print("Usage:")
         console.print("  weather")
+        console.print("  weather --json")
         console.print("  weather --location LAT,LON")
         console.print("  WEATHER_LOCATION=LAT,LON weather\n")
         console.print(
@@ -537,7 +566,10 @@ def main() -> None:
         console.print("[yellow]Tip:[/] check your internet connection\n")
         sys.exit(1)
 
-    render(weather, location, console)
+    if "--json" in sys.argv:
+        render_json(weather, location)
+    else:
+        render(weather, location, console)
 
 
 if __name__ == "__main__":

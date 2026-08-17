@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --upgrade-package yt-dlp --upgrade-package gallery-dl --script
 # /// script
 # requires-python = ">=3.12"
 # dependencies = [
@@ -18,13 +18,12 @@ Both tools respect their default configuration files:
 - gallery-dl: ~/.config/gallery-dl/config.json
 
 Usage:
-    dl <url> [url ...]
+    dl <url>
 
 Examples:
     dl https://youtube.com/watch?v=...
     dl https://twitter.com/user/status/123
     dl https://www.pixiv.net/artworks/12345
-    dl https://youtube.com/watch?v=a https://youtube.com/watch?v=b
 """
 
 import shlex
@@ -146,22 +145,31 @@ def format_error(tool: str, error: str) -> str:
     return result
 
 
-def download_one(url: str, err_console: Console, yt_dlp_opts: dict) -> bool:
-    """
-    Download a single URL, routing to gallery-dl or yt-dlp.
+def main():
+    """Main entry point for the CLI."""
+    err_console = Console(stderr=True, width=100)
 
-    Returns True on success, False on failure (printing diagnostics).
-    """
+    if len(sys.argv) < 2:
+        err_console.print("[red]usage:[/red] dl <url>")
+        err_console.print("\n[yellow]Examples:[/yellow]")
+        err_console.print("  dl https://youtube.com/watch?v=...")
+        err_console.print("  dl https://twitter.com/user/status/123")
+        err_console.print("  dl https://www.pixiv.net/artworks/12345")
+        sys.exit(1)
+
+    url = sys.argv[1]
+
     # Use gallery-dl if it has an extractor for this URL, otherwise yt-dlp
     if gdl_extractor.find(url) is not None:
         success, error = download_with_gallery_dl(url)
         tool = "gallery-dl"
     else:
+        yt_dlp_opts = load_yt_dlp_opts()
         success, error = download_with_yt_dlp(url, yt_dlp_opts)
         tool = "yt-dlp"
 
     if success:
-        return True
+        sys.exit(0)
 
     # Download failed
     err_console.print(f"\n{format_error(tool, error)}\n")
@@ -172,47 +180,7 @@ def download_one(url: str, err_console: Console, yt_dlp_opts: dict) -> bool:
     err_console.print(f"  - Try running {tool} directly for more verbose output:")
     err_console.print(f"    {tool} -v '{url}'")
 
-    return False
-
-
-def main():
-    """Main entry point for the CLI."""
-    err_console = Console(stderr=True, width=100)
-
-    if len(sys.argv) < 2:
-        err_console.print("[red]usage:[/red] dl <url> [url ...]")
-        err_console.print("\n[yellow]Examples:[/yellow]")
-        err_console.print("  dl https://youtube.com/watch?v=...")
-        err_console.print("  dl https://twitter.com/user/status/123")
-        err_console.print("  dl https://www.pixiv.net/artworks/12345")
-        sys.exit(1)
-
-    # Split each arg on whitespace so a single quoted blob of URLs also works
-    urls = [u for arg in sys.argv[1:] for u in arg.split()]
-    if not urls:
-        err_console.print("[red]usage:[/red] dl <url> [url ...]")
-        sys.exit(1)
-
-    # Load yt-dlp config once, shared across all URLs
-    yt_dlp_opts = load_yt_dlp_opts()
-
-    failures = 0
-    for index, url in enumerate(urls):
-        if len(urls) > 1:
-            err_console.print(f"[cyan]==>[/cyan] {url}")
-        try:
-            if not download_one(url, err_console, yt_dlp_opts):
-                failures += 1
-        except KeyboardInterrupt:
-            current = url
-            remaining = len(urls) - index - 1
-            msg = f"\n[yellow]Aborted[/yellow] [dim]({current})[/dim]"
-            if remaining:
-                msg += f"\n[yellow]Skipped[/yellow] {remaining} pending URL{'s' if remaining > 1 else ''}."
-            err_console.print(msg)
-            sys.exit(130)
-
-    sys.exit(1 if failures else 0)
+    sys.exit(1)
 
 
 if __name__ == "__main__":

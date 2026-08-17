@@ -5,18 +5,33 @@ set -euo pipefail
 
 MIN_AGE_DAYS="${1:-7}"
 
+# uv-managed tools and pythons. Runs in the package-manager pane after the
+# system upgrade, since uv itself is installed by that package manager.
+# Note: uv has no command to upgrade PEP 723 script environments — those only
+# re-resolve when the script's dependency block changes or its shebang passes
+# --upgrade-package (see ~/bin/dl). `uv cache prune` only drops dead entries.
+UV_CMD='command -v uv >/dev/null 2>&1 && { echo "=== uv ===" && uv tool upgrade --all && uv python upgrade && uv cache prune && echo; } || true'
+UV_SEQ() {
+    command -v uv &>/dev/null || return 0
+    echo "=== uv ==="
+    uv tool upgrade --all
+    uv python upgrade
+    uv cache prune
+    echo
+}
+
 # Detect package manager
 if command -v brew &>/dev/null; then
     PKG_NAME="Homebrew"
-    PKG_CMD='echo "=== Homebrew ===" && brew update && brew upgrade && brew cleanup && echo && echo "✓ Brew done. Press enter to close." && read'
+    PKG_CMD="echo \"=== Homebrew ===\" && brew update && brew upgrade && brew cleanup && echo && ${UV_CMD} && echo \"✓ Brew + uv done. Press enter to close.\" && read"
     PKG_SEQ() { brew update && brew upgrade && brew cleanup; }
 elif command -v pacman &>/dev/null; then
     PKG_NAME="Pacman"
-    PKG_CMD='echo "=== Pacman ===" && sudo pacman -Syu --noconfirm && echo && echo "✓ Pacman done. Press enter to close." && read'
+    PKG_CMD="echo \"=== Pacman ===\" && sudo pacman -Syu --noconfirm && echo && ${UV_CMD} && echo \"✓ Pacman + uv done. Press enter to close.\" && read"
     PKG_SEQ() { sudo pacman -Syu --noconfirm; }
 elif command -v apt &>/dev/null; then
     PKG_NAME="APT"
-    PKG_CMD='echo "=== APT ===" && sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y && echo && echo "✓ APT done. Press enter to close." && read'
+    PKG_CMD="echo \"=== APT ===\" && sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y && echo && ${UV_CMD} && echo \"✓ APT + uv done. Press enter to close.\" && read"
     PKG_SEQ() { sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y; }
 else
     echo "No supported package manager found (brew, pacman, apt)" >&2
@@ -35,6 +50,7 @@ if ! command -v tmux &>/dev/null; then
     echo "=== ${PKG_NAME} ==="
     PKG_SEQ
     echo
+    UV_SEQ
     if command -v mise &>/dev/null; then
         echo "=== mise ==="
         mise upgrade

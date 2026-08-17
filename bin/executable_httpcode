@@ -104,7 +104,8 @@ get_http_info() {
         508) name="Loop Detected"; desc="The server detected an infinite loop while processing the request." ;;
         510) name="Not Extended"; desc="Further extensions to the request are required for the server to fulfill it." ;;
         511) name="Network Authentication Required"; desc="The client needs to authenticate to gain network access." ;;
-
+        522) name="Connection Timed Out (Cloudflare)"; desc="The site is most likely down, Cloudflare gateway responded with timeout." ;;
+        
         *) return 1 ;;
     esac
 
