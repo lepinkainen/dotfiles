@@ -5,6 +5,7 @@ show_agent_labels_on_pane_borders = true
 
 [keys]
 prefix = "ctrl+a"
+#last_pane = "prefix"
 
 [ui.toast]
 delivery = "system"
