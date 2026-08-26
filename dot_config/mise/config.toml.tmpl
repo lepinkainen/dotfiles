@@ -18,7 +18,10 @@ experimental = true
 # ---------------------------------------------------------------------------
 
 [tools]
-# (empty for now — no runtimes are mise-managed yet.)
+# XMPP CLI client — not in brew or the mise registry, so installed via the go
+# backend (mise compiles it with `go install`; requires go on PATH).
+"go:salsa.debian.org/mdosch/go-sendxmpp" = "latest"
+# (no runtimes are mise-managed yet.)
 # NOTE: `go` and `node` intentionally stay in brew (below). Brew formulae depend
 # on them — go: gofumpt/golangci-lint/gopls/goimports/go-task; node:
 # gemini-cli/opencode/typescript/typescript-language-server/vscode-langservers-extracted
@@ -132,6 +135,8 @@ dust = "latest"
 hexyl = "latest"
 "aqua:Canop/broot" = "latest"
 "aqua:dalance/procs" = "latest"
+# XMPP CLI client — go backend (compiled via `go install`, needs go above).
+"go:salsa.debian.org/mdosch/go-sendxmpp" = "latest"
 
 [bootstrap.packages]
 {{ if eq (.chezmoi.osRelease.id | default "") "debian" -}}
