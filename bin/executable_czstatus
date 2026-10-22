@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""
+Show what `chezmoi apply` would change, and which side is newer.
+
+For each entry in `chezmoi status`: local mtime, last source commit date,
+which is newer, and +/- line counts of the pending diff ('+' = source would
+be added, '-' = local would be removed).
+
+Usage:
+    czstatus [chezmoi status args, e.g. paths]
+
+Set CZSTATUS_CHECK=1 to run the built-in self-check instead.
+"""
+
+import os
+import subprocess
+import sys
+from datetime import date, datetime
+from pathlib import Path
+
+HOME = Path.home()
+HEADER = ("STATUS", "FILE", "LOCAL", "COMMITTED", "NEWER", "DIFF", "NOTES")
+
+
+def run(*cmd: str) -> str:
+    """Stdout of a command, or '' on any failure."""
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        return r.stdout if r.returncode == 0 else ""
+    except OSError:
+        return ""
+
+
+def fmt_date(d: date | None, today: date) -> str:
+    if d is None:
+        return "-"
+    n = (today - d).days
+    return f"{d.isoformat()} ({'today' if n == 0 else f'{n}d ago'})"
+
+
+def newer(local: datetime | None, commit: datetime | None) -> str:
+    if local is None or commit is None:
+        return "-"
+    if local == commit:
+        return "same"
+    return "local" if local > commit else "source"
+
+
+def diff_counts(target: Path) -> str:
+    lines = run("chezmoi", "diff", "--no-pager", str(target)).splitlines()
+    add = sum(1 for ln in lines if ln.startswith("+") and not ln.startswith("+++"))
+    rem = sum(1 for ln in lines if ln.startswith("-") and not ln.startswith("---"))
+    return f"+{add} -{rem}"
+
+
+def describe(code: str, rel: str, srcdir: str, today: date) -> dict:
+    target = HOME / rel
+    src = run("chezmoi", "source-path", str(target)).strip()
+    base = os.path.basename(src)
+    notes = []
+    if ".tmpl" in base:
+        notes.append("template")
+    if base.startswith("encrypted_") or base.endswith(".age"):
+        notes.append("encrypted")
+    row = dict(status=code, file=rel, local="-", committed="-", newer="-", diff="-")
+    if "R" in code or base.startswith("run_"):
+        row["notes"] = ["script"] + notes
+        return row
+    local = None
+    if target.exists():
+        local = datetime.fromtimestamp(target.stat().st_mtime).astimezone()
+    commit = None
+    if src and srcdir:
+        srcrel = os.path.relpath(src, srcdir)
+        out = run("git", "-C", srcdir, "log", "-1", "--format=%cI", "--", srcrel).strip()
+        commit = datetime.fromisoformat(out) if out else None
+        if run("git", "-C", srcdir, "status", "--porcelain", "--", srcrel).strip():
+            notes.append("uncommitted")
+    row.update(local=fmt_date(local and local.date(), today),
+               committed=fmt_date(commit and commit.date(), today),
+               newer=newer(local, commit), diff=diff_counts(target), notes=notes)
+    return row
+
+
+def table(rows: list[tuple]) -> str:
+    widths = [max(len(r[i]) for r in rows) for i in range(len(HEADER))]
+    return "\n".join("  ".join(c.ljust(w) for c, w in zip(r, widths)).rstrip() for r in rows)
+
+
+def hints(rows: list[dict]) -> list[str]:
+    out = []
+    local = [r for r in rows if r["newer"] == "local"]
+    plain = [r["file"] for r in local if "template" not in r["notes"]]
+    tmpl = [r["file"] for r in local if "template" in r["notes"]]
+    if plain:
+        out.append("keep local: chezmoi re-add " + " ".join(plain))
+    if tmpl:
+        out.append("keep local (templates, need `chezmoi edit`): " + " ".join(tmpl))
+    source = [r["file"] for r in rows if r["newer"] == "source"]
+    if source:
+        out.append("take source: chezmoi apply " + " ".join(source))
+    return out
+
+
+def _check() -> None:
+    t = date(2026, 10, 22)
+    assert fmt_date(t, t) == "2026-10-22 (today)"
+    assert fmt_date(date(2026, 10, 19), t) == "2026-10-19 (3d ago)"
+    assert fmt_date(None, t) == "-"
+    a, b = datetime(2026, 10, 22, 9), datetime(2026, 10, 22, 10)  # same day, different hour
+    assert newer(b, a) == "local"
+    assert newer(a, b) == "source"
+    assert newer(a, a) == "same" and newer(None, a) == "-"
+    rows = [dict(file="a", newer="local", notes=[]), dict(file="b", newer="local", notes=["template"]),
+            dict(file="c", newer="source", notes=[])]
+    assert hints(rows) == ["keep local: chezmoi re-add a",
+                           "keep local (templates, need `chezmoi edit`): b",
+                           "take source: chezmoi apply c"]
+    print("ok")
+
+
+def main() -> int:
+    if os.environ.get("CZSTATUS_CHECK") == "1":
+        _check()
+        return 0
+    lines = run("chezmoi", "status", *sys.argv[1:]).splitlines()
+    if not lines:
+        print("nothing to apply")
+        return 0
+    srcdir = run("chezmoi", "source-path").strip()
+    today = date.today()
+    rows = []
+    for ln in lines:
+        try:
+            rows.append(describe(ln[:2], ln[3:], srcdir, today))
+        except Exception as e:  # one bad entry shouldn't kill the rest
+            rows.append(dict(status=ln[:2], file=ln[3:], local="-", committed="-",
+                             newer="-", diff="-", notes=[f"error: {e}"]))
+    print(table([HEADER] + [(r["status"], r["file"], r["local"], r["committed"], r["newer"],
+                              r["diff"], ", ".join(r["notes"]) or "-") for r in rows]))
+    for h in hints(rows):
+        print(h)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
