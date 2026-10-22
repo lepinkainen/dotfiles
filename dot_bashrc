@@ -184,3 +184,5 @@ fi
 #    tmux new-session -A -s main
 #fi
 
+
+source /Users/shrike/.config/broot/launcher/bash/br

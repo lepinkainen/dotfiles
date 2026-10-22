@@ -3,7 +3,8 @@
 # Theme stuff
 theme = Flexoki Dark
 
-font-family = Fira Code
+# font-family = Fira Code
+font-family = Maple Mono
 font-size = 13
 font-feature = +calt,+liga
 # Makes the font less thin and more readable

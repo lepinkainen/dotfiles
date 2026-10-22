@@ -1,3 +1,7 @@
+# The following lines were added by Docker Desktop to add commands to your PATH.
+export PATH="$PATH:/Users/shrike/.docker/bin"
+# End of Docker Desktop section.
+
 # # Base16 Shell: https://github.com/chriskempson/base16-shell
 # if status --is-interactive
 #     set BASE16_SHELL "$HOME/.config/base16-shell/"
