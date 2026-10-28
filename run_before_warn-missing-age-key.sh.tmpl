@@ -1,0 +1,11 @@
+{{- /* Remind that encrypted targets were skipped (.chezmoiignore) because the
+       age identity is missing. Renders completely empty when the key exists,
+       and chezmoi does not run empty scripts. */ -}}
+{{ if not (stat .chezmoi.config.age.identity) -}}
+#!/bin/sh
+cat >&2 <<'MSG'
+WARNING: age identity not found at {{ .chezmoi.config.age.identity }}
+         Encrypted files (~/.ssh/config, ~/.config/cal/config.yaml) are skipped.
+         Copy key.txt from another machine or 1Password, then run `chezmoi apply` again.
+MSG
+{{ end -}}

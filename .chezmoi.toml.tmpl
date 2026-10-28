@@ -1,6 +1,7 @@
 {{/* Generates ~/.config/chezmoi/chezmoi.toml on `chezmoi init`.
      Bootstrap: place the age private key at ~/.config/chezmoi/key.txt before
      `chezmoi apply` (copy from another machine / 1Password, or `age-keygen`).
+     Until it exists, encrypted targets are skipped (see .chezmoiignore).
      The private key is never committed; only public keys live in key/recipients.txt. */}}
 encryption = "age"
 
@@ -8,9 +9,14 @@ encryption = "age"
     email = "riku.lindblad@iki.fi"
     name = "Riku Lindblad"
 
+{{/* delta is installed by `mise bootstrap`, which runs after the first init.
+     Only configure it when present; re-run `chezmoi init` after bootstrap to
+     regenerate this config with delta as the diff pager. */ -}}
+{{ if lookPath "delta" -}}
 [diff]
     pager = "delta"
 
+{{ end -}}
 [age]
     identity = "~/.config/chezmoi/key.txt"
     recipientsFile = "{{ .chezmoi.sourceDir }}/key/recipients.txt"

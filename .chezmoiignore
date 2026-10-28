@@ -4,3 +4,12 @@ CLAUDE.md
 key
 mise-poc
 mise-poc/**
+
+{{- /* Encrypted targets need the age identity to decrypt. On a fresh machine
+       the key is not there yet, so skip them instead of failing the whole
+       apply. Once key.txt is in place, the next `chezmoi apply` installs them.
+       run_before_warn-missing-age-key.sh.tmpl prints a reminder meanwhile. */}}
+{{ if not (stat .chezmoi.config.age.identity) -}}
+.config/cal/config.yaml
+.ssh/config
+{{ end -}}
