@@ -1,7 +1,9 @@
 {{/* Generates ~/.config/chezmoi/chezmoi.toml on `chezmoi init`.
-     Bootstrap: place the age private key at ~/.config/chezmoi/key.txt before
-     `chezmoi apply` (copy from another machine / 1Password, or `age-keygen`).
-     Until it exists, encrypted targets are skipped (see .chezmoiignore).
+     Fresh machine: the only thing needed before `chezmoi init --apply` is the
+     age private key at ~/.config/chezmoi/key.txt (copy from another machine /
+     1Password, or `chezmoi age-keygen`). Until it exists, encrypted targets are
+     skipped (see .chezmoiignore). Everything else (Homebrew, mise, tools) is
+     installed by the apply itself.
      The private key is never committed; only public keys live in key/recipients.txt. */}}
 encryption = "age"
 
@@ -9,14 +11,20 @@ encryption = "age"
     email = "riku.lindblad@iki.fi"
     name = "Riku Lindblad"
 
-{{/* delta is installed by `mise bootstrap`, which runs after the first init.
-     Only configure it when present; re-run `chezmoi init` after bootstrap to
-     regenerate this config with delta as the diff pager. */ -}}
-{{ if lookPath "delta" -}}
 [diff]
-    pager = "delta"
+    # A pager with spaces runs via the shell, so this works before delta is
+    # installed (mise bootstrap installs it during the first apply) and
+    # switches to delta automatically afterwards. No re-init needed.
+    pager = "command -v delta >/dev/null 2>&1 && delta || less"
 
-{{ end -}}
 [age]
     identity = "~/.config/chezmoi/key.txt"
     recipientsFile = "{{ .chezmoi.sourceDir }}/key/recipients.txt"
+
+{{ if eq .chezmoi.os "darwin" -}}
+[scriptEnv]
+    # Scripts run by `chezmoi apply` must find brew/mise-installed tools (go,
+    # gpg, npm, fish, op) even on a fresh machine whose shell PATH does not
+    # include Homebrew yet.
+    PATH = "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:{{ .chezmoi.homeDir }}/bin:{{ .chezmoi.homeDir }}/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+{{ end -}}

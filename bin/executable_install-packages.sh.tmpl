@@ -92,6 +92,14 @@ echo "Installing packages for macOS..."
 if [ ! -x "$(command -v brew)" ]; then
     echo "Installing Homebrew..."
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    # The installer does not change this shell's PATH; load brew for the rest
+    # of this script (Apple Silicon and Intel locations).
+    for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+        if [ -x "$b" ]; then
+            eval "$("$b" shellenv)"
+            break
+        fi
+    done
 else
     echo "Homebrew already installed, updating..."
     brew update
@@ -100,6 +108,17 @@ fi
 # Install packages from Brewfile
 echo "Installing packages from Brewfile..."
 brew bundle
+
+# CLI formulae and dev tools are mise-managed (~/.config/mise/config.toml,
+# deployed by chezmoi before this script runs). Install mise, then let
+# `mise bootstrap` install everything the config declares. It only adds what
+# is missing and does not prune, so it is safe to repeat on every run.
+if ! command -v mise >/dev/null 2>&1; then
+    echo "Installing mise..."
+    brew install mise
+fi
+echo "Installing CLI tools via mise bootstrap..."
+mise bootstrap --yes
 
 # Install terminal and window management tools
 echo "Installing terminal and window management tools..."

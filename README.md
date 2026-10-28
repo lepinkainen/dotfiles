@@ -11,10 +11,14 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply lepinkainen
 ## Fresh machine
 
 1. Put this machine's age private key at `~/.config/chezmoi/key.txt`
-   (copy from another machine / 1Password, or generate one and add its
-   public key to `key/recipients.txt`, see CLAUDE.md). Until it exists,
-   encrypted files (`~/.ssh/config`, `~/.config/cal/config.yaml`) are
-   skipped and `chezmoi apply` prints a warning.
-2. Run the install command above.
-3. `mise bootstrap` to install CLI tools, then `chezmoi init` once more so
-   the generated config picks up `delta` as the diff pager.
+   (copy from 1Password or another machine; a brand-new key also needs its
+   public key added to `key/recipients.txt` and the secrets re-encrypted,
+   see CLAUDE.md). Nothing else needs installing first.
+2. Run the install command above. The apply installs Homebrew, the casks
+   from the Brewfile, mise and everything in its config (`mise bootstrap`),
+   and only then the scripts that need those tools. Expect a sudo prompt
+   or two.
+
+If the key was missing in step 1, the encrypted files (`~/.ssh/config`,
+`~/.config/cal/config.yaml`) are skipped with a warning. Place the key and
+run `chezmoi apply` again.

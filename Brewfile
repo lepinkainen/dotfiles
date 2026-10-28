@@ -1,7 +1,8 @@
 # Homebrew bundle — CASKS ONLY.
 #
 # CLI tool FORMULAE moved to mise: ~/.config/mise/config.toml
-# ([bootstrap.packages] "brew:*" + [tools]). Run `mise bootstrap` to install them.
+# ([bootstrap.packages] "brew:*" + [tools]). bin/install-packages.sh installs mise
+# and runs `mise bootstrap` right after `brew bundle`.
 # Casks stay here because mise's brew backend cannot install casks.
 #
 # NOTE: never run `brew bundle cleanup`/`--force` — it would uninstall every

@@ -3,6 +3,7 @@
 # Idempotent: skips entirely (no 1Password unlock) when the key is already in
 # the keyring. Reads secrets at runtime via `op`, only when the key is missing.
 # Requires: gnupg installed, `op` CLI signed in.
+# gpg: {{ lookPath "gpg" }}  (re-runs once gpg gets installed)
 
 set -eu
 

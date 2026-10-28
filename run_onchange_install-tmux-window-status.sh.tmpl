@@ -4,6 +4,7 @@
 #
 # main.go: {{ include "dot_local/share/tmux-title/main.go" | sha256sum }}
 # go.mod:  {{ include "dot_local/share/tmux-title/go.mod" | sha256sum }}
+# go:      {{ lookPath "go" }}  (re-runs once go gets installed)
 
 set -eu
 

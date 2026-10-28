@@ -76,9 +76,10 @@ Package installation is triggered by `run_onchange_install-packages.sh.tmpl`, wh
 - **Package list**: `Brewfile` (root of chezmoi source)
 - **Process**: 
   1. Installs Homebrew if missing
-  2. Runs `brew bundle` to install from Brewfile
-  3. Installs additional casks (Hammerspoon, Karabiner-Elements)
-  4. Installs Nerd Fonts
+  2. Runs `brew bundle` to install casks from Brewfile
+  3. Installs mise and runs `mise bootstrap` (brew formulae + dev tools from `dot_config/mise/config.toml.tmpl`)
+  4. Installs additional casks (Hammerspoon, Karabiner-Elements)
+  5. Installs Nerd Fonts
 
 #### Linux (Debian/Ubuntu)
 - **Package manager**: apt
@@ -93,7 +94,7 @@ Package installation is triggered by `run_onchange_install-packages.sh.tmpl`, wh
 #### npm (Global Packages - All Platforms)
 - **Package manager**: npm
 - **Package list**: `npmfile` (root of chezmoi source)
-- **Trigger**: `run_onchange_install-npm-packages.sh.tmpl` runs when `npmfile` changes
+- **Trigger**: `run_onchange_after_install-npm-packages.sh.tmpl` runs when `npmfile` changes (an `after_` script so mise has installed node first)
 - **Process**: Reads packages from npmfile, runs `npm install -g` for each
 
 ### Adding New Packages
