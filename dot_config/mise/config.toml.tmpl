@@ -97,6 +97,12 @@ experimental = true
 "brew:zoxide" = "latest"
 "brew:sevenzip" = "latest"
 
+[bootstrap.user]
+# Login shell. Bare name resolves on PATH (fish comes from the packages step
+# above, which runs first); mise adds it to /etc/shells (sudo) and runs chsh.
+# Takes effect in the next login session.
+login_shell = "fish"
+
 [bootstrap.macos.defaults]
 # Dock/Finder/keyboard tweaks — opinionated, enable what you want, then
 # `mise bootstrap macos-defaults apply`. Examples (commented until you choose):
@@ -189,6 +195,12 @@ hexyl = "latest"
 {{ else -}}
 # Unknown Linux distro: {{ .chezmoi.osRelease.id | default "?" }} — add a branch.
 {{ end -}}
+
+[bootstrap.user]
+# Login shell. Bare name resolves on PATH (fish comes from the packages step
+# above, which runs first); mise adds it to /etc/shells (sudo) and runs chsh.
+# Takes effect in the next login session.
+login_shell = "fish"
 
 {{ else -}}
 [tools]
