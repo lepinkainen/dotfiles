@@ -1,0 +1,21 @@
+#!/bin/sh
+# ~/.gitconfig includes ~/.gitconfig.local for the machine-local [user]
+# identity and deliberately does not manage it. Without it git guesses the
+# author from the hostname (or refuses, if the hostname has no domain part).
+# Seed it once from [data] in ~/.config/chezmoi/chezmoi.toml; never overwrite
+# a hand-written one (work address etc.).
+set -eu
+
+target="{{ .chezmoi.homeDir }}/.gitconfig.local"
+if [ -e "$target" ]; then
+    exit 0
+fi
+
+cat > "$target" <<'GITCONFIG'
+# Machine-local git identity (seeded by chezmoi from its [data] name/email;
+# edit freely, chezmoi will not touch this file again).
+[user]
+    name = {{ .name }}
+    email = {{ .email }}
+GITCONFIG
+echo "Created $target with identity {{ .name }} <{{ .email }}>"

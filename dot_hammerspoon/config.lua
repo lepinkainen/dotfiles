@@ -18,11 +18,11 @@ config.displays = {
 config.networks = {
     home = {
         ssids = { "Rocinante-5G" },
-        machines = { "mimic", "mystique" }
+        machines = { "mimic", "mystique", "gambit" }
     },
     work = {
         ssids = { "Metacore" },
-        machine = "gambit"
+        machine = "PLACEHOLDER"
     }
 }
 

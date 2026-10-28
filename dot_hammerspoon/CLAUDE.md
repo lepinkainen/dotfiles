@@ -35,4 +35,4 @@ There is no build or test system. Edit any `.lua` file and the `ReloadConfigurat
 
 ### Multi-Machine Setup
 
-Two home machines: `mimic` (desktop) and `mystique` (laptop). Both match as home machines. `mystique` with only its built-in display gets `home_laptop_only` (launches apps without specific layout). With external displays, it gets the full `home` layout. Work detection uses WiFi SSID to distinguish office vs home.
+Three home machines: `mimic` (desktop), `mystique` (laptop) and `gambit` (laptop). All match as home machines. No work machine is defined currently (`PLACEHOLDER`). `mystique` with only its built-in display gets `home_laptop_only` (launches apps without specific layout). With external displays, it gets the full `home` layout. Work detection uses WiFi SSID to distinguish office vs home.
