@@ -56,7 +56,7 @@ chezmoi update
 - **Terminal**: Fish shell with starship prompt, tmux, multiple terminal emulators (wezterm, alacritty)
 - **Editor**: Neovim with Lua configuration in `dot_config/nvim/`
 - **Development**: Git, direnv, atuin (shell history), various CLI tools
-- **macOS specific**: Hammerspoon (window management), Karabiner-Elements (key mapping)
+- **macOS specific**: Hammerspoon (window management), Karabiner-Elements (key mapping), Touch ID for sudo (`run_setup-touchid-sudo.sh.tmpl` writes `/etc/pam.d/sudo_local`)
 
 ## File Naming Conventions
 

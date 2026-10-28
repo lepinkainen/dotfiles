@@ -1,0 +1,41 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/bin/sh
+# Enable Touch ID for sudo via /etc/pam.d/sudo_local, which survives OS updates
+# (/etc/pam.d/sudo includes it since macOS Sonoma). Runs on every apply but
+# only writes the file, and therefore only prompts for sudo, when its content
+# differs. If pam_reattach (brew) is installed, it is added so Touch ID also
+# works inside tmux; re-run `chezmoi apply` after `mise bootstrap` to pick it up.
+set -eu
+
+target=/etc/pam.d/sudo_local
+if ! grep -q '^auth.*include.*sudo_local' /etc/pam.d/sudo 2>/dev/null; then
+    echo "touchid-sudo: /etc/pam.d/sudo does not include sudo_local (macOS < 14?), skipping"
+    exit 0
+fi
+
+reattach=""
+for p in /opt/homebrew/lib/pam/pam_reattach.so /usr/local/lib/pam/pam_reattach.so; do
+    if [ -f "$p" ]; then
+        reattach="$p"
+        break
+    fi
+done
+
+want="# sudo_local: managed by chezmoi (run_setup-touchid-sudo.sh). Survives OS updates.
+"
+if [ -n "$reattach" ]; then
+    want="${want}auth       optional       ${reattach}
+"
+fi
+want="${want}auth       sufficient     pam_tid.so
+"
+
+if [ -f "$target" ] && [ "$(cat "$target")" = "$(printf '%s' "$want")" ]; then
+    exit 0
+fi
+
+echo "touchid-sudo: writing $target (needs sudo)"
+printf '%s' "$want" | sudo tee "$target" >/dev/null
+sudo chmod 444 "$target"
+echo "touchid-sudo: Touch ID enabled for sudo${reattach:+ (with pam_reattach for tmux)}"
+{{- end }}
