@@ -20,6 +20,7 @@ cask "ghostty"
 cask "iina"
 cask "telegram-desktop"
 cask "transmit"
+cask "visual-studio-code"
 #cask "google-chrome"
 
 #mas "Parcel", id: 639968404
