@@ -11,11 +11,12 @@
 # Applications
 cask "1password"
 cask "1password-cli"
+cask "alfred"
 #cask "claude-code"
 cask "codex"
 cask "discord"
 cask "ghostty"
-#cask "firefox"
+cask "firefox"
 #cask "fork"
 cask "iina"
 cask "telegram-desktop"
