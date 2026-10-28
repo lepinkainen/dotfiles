@@ -1,5 +1,7 @@
 #!/bin/sh
 # Brewfile hash: {{ include "Brewfile" | sha256sum }}
+# mise config hash (re-run `mise bootstrap` when its package list changes):
+# {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
 echo "Installing packages (may prompt for sudo password)..."
 
 # Call the standalone install-packages script
