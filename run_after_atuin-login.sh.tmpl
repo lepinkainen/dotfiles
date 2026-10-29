@@ -1,0 +1,32 @@
+#!/bin/sh
+# Log this machine into atuin sync so history from the other machines arrives
+# on the first apply. `atuin login` is an Atuin Hub login: it opens a browser
+# for GitHub sign-in, so this only runs in an interactive terminal. The shared
+# encryption key comes from 1Password (op://Private/Atuin/atuin key) and is
+# passed via the environment, never argv. Runs on every apply but exits at
+# once when already logged in; if `op` is unavailable it leaves a hint and
+# simply retries on the next apply.
+set -eu
+
+command -v atuin >/dev/null 2>&1 || exit 0
+if atuin status 2>/dev/null | grep -q '^Username:'; then
+    exit 0
+fi
+if [ ! -t 0 ]; then
+    echo "atuin: not logged in; run \`chezmoi apply\` from a terminal to log in (browser sign-in)" >&2
+    exit 0
+fi
+
+{{ if lookPath "op" -}}
+key=$(op read "op://Private/Atuin/atuin key" 2>/dev/null || true)
+if [ -z "$key" ]; then
+    echo "atuin: not logged in and 1Password unavailable; sign in to op and re-run \`chezmoi apply\`" >&2
+    exit 0
+fi
+
+echo "atuin: logging in (browser GitHub sign-in; key from 1Password)"
+ATUIN_ENCRYPTION_KEY="$key" atuin login
+atuin sync -f
+{{- else }}
+echo "atuin: not logged in; install the 1Password CLI (op) and re-run \`chezmoi apply\`" >&2
+{{- end }}
