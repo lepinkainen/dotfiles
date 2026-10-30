@@ -1,0 +1,11 @@
+{
+    "KPackageStructure": "KWin/Script",
+    "KPlugin": {
+        "Id": "rectangle",
+        "Name": "Rectangle Shortcuts",
+        "Description": "Ctrl+Alt window snapping, thirds, and monitor cycling",
+        "Version": "1.0"
+    },
+    "X-Plasma-API": "javascript",
+    "X-Plasma-MainScript": "code/main.js"
+}

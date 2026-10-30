@@ -5,6 +5,11 @@ key
 mise-poc
 mise-poc/**
 
+{{ if ne .chezmoi.os "linux" -}}
+.local/share/kwin
+.local/share/kwin/**
+{{ end -}}
+
 {{- /* Encrypted targets need the age identity to decrypt. On a fresh machine
        the key is not there yet, so skip them instead of failing the whole
        apply. Once key.txt is in place, the next `chezmoi apply` installs them.
