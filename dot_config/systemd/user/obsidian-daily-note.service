@@ -1,0 +1,6 @@
+[Unit]
+Description=Open today's Obsidian daily note
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/xdg-open obsidian://daily?vault=Obsidian%%20Main%%20Vault

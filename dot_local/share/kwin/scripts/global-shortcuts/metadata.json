@@ -1,0 +1,11 @@
+{
+    "KPackageStructure": "KWin/Script",
+    "KPlugin": {
+        "Id": "global-shortcuts",
+        "Name": "Global Shortcuts",
+        "Description": "Personal global shortcuts ported from Hammerspoon",
+        "Version": "1.0"
+    },
+    "X-Plasma-API": "javascript",
+    "X-Plasma-MainScript": "code/main.js"
+}

@@ -6,6 +6,7 @@ mise-poc
 mise-poc/**
 
 {{ if ne .chezmoi.os "linux" -}}
+.config/systemd/user/obsidian-daily-note.service
 .local/share/kwin
 .local/share/kwin/**
 {{ end -}}
