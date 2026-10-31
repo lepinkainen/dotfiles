@@ -1,0 +1,11 @@
+[Unit]
+Description=Keyd keyboard remapping (Homebrew)
+After=local-fs.target
+RequiresMountsFor=/home/linuxbrew/.linuxbrew
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/keyd
+
+[Install]
+WantedBy=multi-user.target
