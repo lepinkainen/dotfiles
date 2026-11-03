@@ -5,12 +5,16 @@ key
 mise-poc
 mise-poc/**
 
-{{ if ne .chezmoi.os "linux" -}}
+{{ if not (lookPath "kwin_wayland") -}}
 .config/systemd/user/obsidian-daily-note.service
-.config/keyd
-.config/keyd/**
 .local/share/kwin
 .local/share/kwin/**
+{{ end -}}
+
+{{- /* keyd config is tied to the Keychron Q3 on this one PC. */}}
+{{ if ne .chezmoi.hostname "juggernaut" -}}
+.config/keyd
+.config/keyd/**
 {{ end -}}
 
 {{- /* Encrypted targets need the age identity to decrypt. On a fresh machine
