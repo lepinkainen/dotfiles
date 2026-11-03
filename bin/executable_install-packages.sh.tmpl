@@ -75,6 +75,8 @@ sudo pacman -Syu --noconfirm $PACKAGES
 echo ""
 echo "Not in official Arch repos — install via AUR or separately if needed:"
 echo "  ack, gallery-dl, icdiff, git-secrets, doctl, terraform, watchman, uv, llm, gemini-cli, claude-code"
+{{ else if eq $osid "linux-bazzite" -}}
+echo "Bazzite: packages managed outside chezmoi, skipping"
 {{ else -}}
 echo "Unsupported Linux distribution: {{ $osid }}"
 echo "Please install the following packages manually:"
